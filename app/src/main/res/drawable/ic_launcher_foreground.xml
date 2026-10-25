@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- One stroke: a curl, the W, then a ribbon tail. Keep in sync with RibbonW in ui/design/YaoMarks.kt. -->
+    <path android:strokeColor="@color/yao_icon_ink" android:strokeWidth="5.6" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M30.5,43.5C28.5,37 33.5,33 37,37.5L45.6,66.5C46.6,70 49.4,70 50.4,66.5L54,54.5L57.6,66.5C58.6,70 61.4,70 62.4,66.5L71,37.5C72.6,33.2 78.4,32.6 80.6,36.8" />
+    <path android:strokeColor="@color/yao_icon_ink" android:strokeWidth="3" android:strokeLineCap="round"
+        android:pathData="M80.6,36.8C83.2,41.6 82.2,49 76.6,55.2" />
+    <path android:strokeColor="@color/yao_icon_ink" android:strokeWidth="1.2" android:strokeLineCap="round"
+        android:pathData="M39.8,43.6L46.6,65.4" />
+</vector>

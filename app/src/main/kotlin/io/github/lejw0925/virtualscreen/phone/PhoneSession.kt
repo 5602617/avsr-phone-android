@@ -110,8 +110,13 @@ class PhoneSession(private val app: VirtualScreenApplication) {
     @Synchronized fun finishTask(taskId: String, outcome: String = "completed", reason: String = "") {
         app.mainScreen.finishTask(taskId, outcome, reason)
     }
+    @Synchronized fun requestMainScreen(taskId: String, reason: String): Boolean {
+        check(required) { "PHONE_TASK_BINDING_REQUIRED" }
+        val connectionId = checkNotNull(mutable.value.connectionId) { "PHONE_DISCONNECTED" }
+        return app.mainScreen.policy.requestMainScreen(taskId, connectionId, reason)
+    }
     fun checkTaskHeader(name: String, taskId: String?) {
-        if (!required || name !in SCREEN_TOOLS) return
+        if (!required || name !in TASK_BOUND_TOOLS) return
         val current = app.mainScreen.policy.state.value
         check(current.taskId != null && taskId == current.taskId) { "PHONE_TASK_BINDING_REQUIRED" }
     }
@@ -122,9 +127,13 @@ class PhoneSession(private val app: VirtualScreenApplication) {
         val usage = app.mainScreen.policy.state.value
         if (usage.humanHandoff && name !in HUMAN_READ_TOOLS)
             error(if (usage.phase == "human_control") "HUMAN_CONTROL_ACTIVE" else "HUMAN_HANDOFF_PENDING")
+        if (name == "phone_request_main_screen")
+            check(usage.live) { usage.failureCode ?: "PHONE_TASK_BINDING_REQUIRED" }
         if (name in SCREEN_TOOLS) {
             if (required) check(usage.live) { usage.failureCode ?: "PHONE_TASK_BINDING_REQUIRED" }
-            check(usage.phase != "waiting_borrow") { "MAIN_SCREEN_BORROW_PENDING" }
+            check(usage.phase != "waiting_borrow") {
+                if (usage.borrowRequestSource == "direct_request") "MAIN_SCREEN_REQUEST_PENDING" else "MAIN_SCREEN_BORROW_PENDING"
+            }
             check(usage.phase != "countdown") { "MAIN_SCREEN_COUNTDOWN" }
             if (usage.mainScreenAllowed && !name.startsWith("main_screen_")) error("MAIN_SCREEN_MODE_ACTIVE")
             if (name.startsWith("main_screen_")) check(usage.mainScreenAllowed) { "BACKGROUND_MAIN_SCREEN_NOT_ALLOWED" }
@@ -162,6 +171,7 @@ class PhoneSession(private val app: VirtualScreenApplication) {
             "tap_at", "long_press_at", "swipe_path", "scroll_at", "input_text", "press_key", "node_action",
             "main_screen_observe", "main_screen_node_action", "main_screen_gesture", "main_screen_back", "main_screen_launch_app", "main_screen_finish",
             "phone_request_handoff")
+        val TASK_BOUND_TOOLS = SCREEN_TOOLS + "phone_request_main_screen"
         private val HUMAN_READ_TOOLS = setOf("phone_get_status", "get_status", "get_request_receipt", "list_apps",
             "qqmusic_get_playback", "phone_glance_status", "alarm_get_next", "alarm_get_request", "calendar_list", "calendar_read")
     }

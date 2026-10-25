@@ -1,87 +1,66 @@
-# 构建与发布
+# shealive 构建与发行准备
 
-## 环境
+## 工具链
 
-| 项目 | 使用版本 |
-| --- | --- |
-| JDK | 25 |
-| Gradle wrapper | 9.7.1 |
-| Android Gradle Plugin | 9.4.1 |
-| Kotlin / Compose compiler plugin | 2.4.20 |
-| Android SDK | compile / target 37，min 33 |
-| Compose Material 3 | 1.5.0-alpha29 |
-| Ktor CIO | 3.3.3 |
-| Shizuku API | 13.1.5 |
-| Android NDK | 28.2.13676358 |
-| Go，原生构建使用 | 1.25.6 |
+JDK 25、Gradle wrapper 9.7.1、AGP 9.4.1、Kotlin/Compose plugin 2.4.20；Android compile/target 37、min 33。SDK 包为 `platforms;android-37.0` 与 `build-tools;37.0.0`。原生程序使用 NDK 28.2.13676358、Go 1.25.6。
 
-SDK 安装包名为 `platforms;android-37.0` 与 `build-tools;37.0.0`。在 `local.properties` 写入本机 SDK 路径，或设置 `ANDROID_HOME`。该文件不随项目分发。Gradle 的 daemon JVM 配置为 JDK 25；Java / Kotlin 代码也使用该工具链。
+设置 `ANDROID_HOME` 或本机 `local.properties`；该文件不分发。macOS/Linux 需要 bash、Python3、curl、tar、shasum 及上述原生工具链。Windows 可打包 Android，但原生重建脚本只支持 macOS/Linux。
+
+## 完整本地构建
+
+六个原生程序未跟踪于 Git，干净 checkout 必须先构建或准备可信且与现有清单一致的副本。
 
 ```sh
 export JAVA_HOME=/absolute/path/to/jdk-25
 export PATH="$JAVA_HOME/bin:$PATH"
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
-```
-
-产物：`app/build/outputs/apk/debug/app-debug.apk`、`app/build/outputs/apk/release/app-release-unsigned.apk`。本地交付副本可放在被 Git 忽略的 `dist/`。正式 APK 与 `SHA256SUMS` 由版本标签触发的 Actions 发布到 GitHub Releases。
-
-## 原生程序
-
-APK 已包含三种 ABI 的 frpc 0.65.0 与 cloudflared 2025.8.1。可执行文件命名为 `libfrpc.so` / `libcloudflared.so`，由系统解压到 `nativeLibraryDir`，以普通 App UID 执行。它们是 Android ELF PIE，不是通过 JNI 调用的共享库；不要在打包时移除、重命名或 strip 这些文件。
-
-重新构建：
-
-```sh
+export ANDROID_HOME=/absolute/path/to/android-sdk
 export ANDROID_NDK_HOME=/absolute/path/to/android-ndk/28.2.13676358
-./scripts/build-tunnels.sh
+bash scripts/build-tunnels.sh
+python3 scripts/native-manifest.py --verify
+bash ./gradlew :app:assembleDebug :app:assembleRelease
 ```
 
-支持 macOS / Linux 构建主机。脚本下载固定标签源码并校验源码归档 SHA-256，为 Android API 33 构建 `arm64-v8a`、`armeabi-v7a`、`x86_64`，ELF LOAD 对齐为 16 KiB。Go DNS 使用本应用的回环 DNS 桥接，桥接调用 Android 系统解析器；cloudflared 补丁还使官方登录遵循指定的 `--origincert` 私有路径。
+不依赖脚本 executable bit。Windows 在准备原生程序后用 `gradlew.bat` 替代 `bash ./gradlew`。Debug 产物为 `app/build/outputs/apk/debug/app-debug.apk`，未配签名时 Release 为 `app/build/outputs/apk/release/app-release-unsigned.apk`。不含原生程序的构建不能当作完整候选。
 
-完整来源、补丁和二进制哈希位于 `app/src/main/assets/native-build.json`。重新构建后该文件由脚本更新。只有 arm64-v8a 已在当前实体机执行，其他 ABI 的构建和 ELF 检查不能替代安装运行验证。
+原生入口下载固定标签 frp 0.65.0 / cloudflared 2025.8.1，验证源码归档 SHA256，应用 `scripts/patch-native.py`，构建 API33 的 arm64-v8a、armeabi-v7a、x86_64。`libfrpc.so` / `libcloudflared.so` 是可执行 Android ELF PIE，保留名称和打包方式，不 strip。来源、补丁和二进制哈希写入 `app/src/main/assets/native-build.json`。
 
-## 发行签名
+重建结束自动核验六个文件；单独 `python3 scripts/native-manifest.py --verify` 只读检查完整性、大小、SHA256 和补丁哈希，不写清单。复用已有可信文件时只核验，不生成新清单冒充原来源。哈希核对不代表所有 ABI 已经实机验证，也不承诺跨主机字节完全一致。
 
-将以下环境变量设置为自己的发行密钥后运行 `:app:assembleRelease`：
+替换或修改随包的 LGPL 组件 spake2，见 [重建与重新链接](RELINKING.md)。依赖的许可证、来源和所选许可见 [第三方通知](../THIRD_PARTY_NOTICES.md)。
+
+## 签名与升级
+
+APK 应用身份保持 `dev.avsr.phone`，versionCode 13，versionName 0.1.0。项目文档显示名为 shealive，不更换包名或签名。
+
+维护者可用现有环境入口签名：
 
 ```sh
-export AVS_KEYSTORE=/absolute/path/to/release.jks
-export AVS_KEY_ALIAS=your-key-alias
-# 通过本地安全方式设置 AVS_STORE_PASSWORD 与 AVS_KEY_PASSWORD。
-./gradlew :app:assembleRelease
+export AVS_KEYSTORE=/absolute/path/to/existing-release-keystore
+export AVS_KEY_ALIAS=existing-key-alias
+# 通过本机安全方式设置 AVS_STORE_PASSWORD、AVS_KEY_PASSWORD，不写入仓库。
+bash ./gradlew :app:assembleRelease
 ```
 
-不配置密钥时仍可构建 unsigned Release，不能直接作为可安装发行包。Debug 使用开发签名。0.0.1 正式包使用独立 RSA-4096 发行密钥和 APK v3 签名，包含本次本地开发证书到发行证书的签名历史；已验证这台测试机可保留数据升级。其他开发者的 Debug 证书不在该历史中，不能保证覆盖安装。不要通过卸载或清除数据解决用户设备的升级问题。
+未配密钥的 unsigned Release 不能直接安装。Debug 使用独立开发身份；其他维护者自签也不能覆盖已有发行身份。 Debug 的应用 ID 为 `dev.avsr.phone.debug`：连接宿主时由管理员把插件 `apk_package` 改成同值，保存并重新加载插件，才能完成设备工具登记；正式签名或自行签名的 Release 均保持 `dev.avsr.phone` 与插件默认值，不修改稳定应用 ID。不要为解决签名差异卸载用户应用或清数据。
 
-发行证书 SHA-256：`f5339eaa0dbac2267004dd5d151c5c35c79f007b7cca448d362e4f3578c30d5c`。
+维护者的发行证书 SHA256 为 `deca00a4eae839656b9371b7cd48868f727c532f1c31425e4e692a3ec1c56eda`。它不沿用上游旧发行证书或签名轮换链。源码构建不需要维护者的私钥；自行签名的 APK 使用自己的身份，升级已有安装需保持原签名。
 
-## 实体机验证
-
-安装 `device-fixture` 只用于验证本项目的按钮、中文编辑框和滚动，不操作用户的其他应用：
+下载后先比对发行页的 `SHA256SUMS`，再用 Android SDK 检查签名：
 
 ```sh
-./gradlew :device-fixture:assembleDebug :app:assembleDebugAndroidTest
-adb -s IP:PORT install -r device-fixture/build/outputs/apk/debug/device-fixture-debug.apk
-adb -s IP:PORT install -r app/build/outputs/apk/debug/app-debug.apk
-adb -s IP:PORT install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-adb -s IP:PORT shell am instrument -w -e class io.github.lejw0925.virtualscreen.DeviceBackendTest io.github.lejw0925.virtualscreen.test/androidx.test.runner.AndroidJUnitRunner
+apksigner verify --verbose --print-certs shealive-0.1.0.apk
 ```
 
-Debug 独有的 `DeviceCheckReceiver` 受 `android.permission.DUMP` 限制，只供 shell / Root 调试。Release 完全不包含该接收器、测试应用或测试入口。
+证书指纹与文件 SHA256 是两项不同的信息：前者识别签名，后者识别这一份产物。发行页须同时提供二者。
 
-## GitHub Actions
+## CI 与发行边界
 
-工作流 `.github/workflows/build.yml` 使用固定提交版本的 Actions。推送 `main`、PR 和手动运行会执行 JVM 测试、Lint、Debug / unsigned Release、fixture 与 instrumentation 构建，上传报告和 Debug APK。
+`.github/workflows/build.yml` 的 verify/release 两个 job 均安装固定 Go/NDK，先通过 bash 构建六个隧道程序并核验清单，再运行 Gradle；不能依赖开发机未跟踪 .so。Actions 固定到提交，setup-go 使用 v6 对应提交 `924ae3a1cded613372ab5595356fb5720e22ba16`。本地仅验证配置/脚本语法、路径和清单场景，尚无当前工作流完整运行通过证据。
 
-仓库维护者通过 GitHub Actions Secrets 配置发行资料：
+分支和 PR 触发构建；`v*` 标签在构建通过后准备 **草稿 Release**，不会自动公开。标签必须与 `versionName` 一致，并有对应 `docs/RELEASE_NOTES_<版本>.md`。首个公开版本为 `0.1.0`。
 
-| Secret | 内容 |
-| --- | --- |
-| `AVS_KEYSTORE_BASE64` | 发行 JKS 的 Base64 |
-| `AVS_LINEAGE_BASE64` | `apksigner rotate` 生成的签名历史 Base64 |
-| `AVS_STORE_PASSWORD` / `AVS_KEY_PASSWORD` | 密钥库和私钥密码 |
-| `AVS_KEY_ALIAS` | 发行密钥别名 |
+标签构建需由维护者在目标仓库设置 `AVS_KEYSTORE_BASE64`、`AVS_STORE_PASSWORD`、`AVS_KEY_PASSWORD`、`AVS_KEY_ALIAS`。使用已有发行密钥，不创建或沿用上游 lineage；流水线启用 v2/v3 签名，并核对上述证书指纹。文件名统一为 `shealive-<版本>.apk`。源码仓不包含签名材料；此说明不表示远端 Secrets 已配置或流水线已执行。
 
-私钥、密码和签名历史只保存在维护者私有目录 / Actions Secrets。标签构建将其恢复到临时目录，签名完成后清除。最低版本为 API 33，发布只使用 v3 签名，无需把旧开发私钥交给 CI。`apksigner` 禁止签名 debuggable APK。
+维护者审阅草稿中的 APK、源码标签、签名指纹、许可材料和版本说明后，再执行公开发布。当前 CI 不自动准备 spake2 对应源码附件；发布草稿前须按 [RELINKING](RELINKING.md) 补齐包含 C 子模块的固定源码归档及其 SHA256。当前工作流的完整云端运行及最终提交的干净检出构建尚待首次发行核对，不能用开发机缓存构建替代。
 
-将 `versionName` 与 `docs/RELEASE_NOTES_<version>.md` 更新后推送匹配标签。稳定版使用 `vX.Y.Z`，Beta 使用 `vX.Y.Z-beta` 或 `vX.Y.Z-beta.N`；Beta 标签会发布为 GitHub prerelease，不会替代 latest stable release。检查通过才发布 `virtual-screen-<version>.apk` 和 `SHA256SUMS`；签名、标签、版本或发行说明不匹配会使发布失败。维护者应下载发布资产，检查哈希与证书，并做实机升级及 MCP 验证后宣布发行。
+首版发行内容为签名 APK、`SHA256SUMS`、`SIGNING-CERTIFICATE.txt`、对应应用源码版本、spake2 完整对应源码归档及 [0.1.0 说明](RELEASE_NOTES_0.1.0.md)。版本说明保留已知限制。许可资产或应用输入改变后，须重建产物并更新哈希。

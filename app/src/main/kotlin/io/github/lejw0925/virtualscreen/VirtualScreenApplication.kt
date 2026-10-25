@@ -150,14 +150,21 @@ class VirtualScreenApplication : Application() {
         wirelessAdb = io.github.lejw0925.virtualscreen.phone.WirelessAdb(this)
         avsr = io.github.lejw0925.virtualscreen.app.AvsrAppController(this)
         runtimeScope.launch {
+            var privilegeWasReady = false
             combine(EmbeddedPrivilege.state, ScreenAccessibilityService.connected) { privilege, connected ->
                 privilege to connected
-            }.collect {
+            }.collect { (privilege, connected) ->
+                val privilegeReady = privilege.phase == "ready"
+                val justReady = privilegeReady && !privilegeWasReady
+                privilegeWasReady = privilegeReady
                 try {
-                    // Refresh cached status only. No grant, display creation, or tool probe here.
                     // The saved backend was injected at construction. Do not overwrite a later
                     // explicit selection while its UI coroutine is persisting that choice.
                     sessions.refreshCapabilities()
+                    // MCP can start before the local privilege service is ready.
+                    // Restore an existing grant once at readiness, not on every
+                    // disconnect (which could endlessly restart a failing service).
+                    if (justReady && !connected) sessions.ensureAccessibility(requireExistingGrant = true)
                 } catch (cancelled: CancellationException) { throw cancelled }
                   catch (failure: Exception) { activityLog.failure("backend_capabilities_refresh", failure) }
             }

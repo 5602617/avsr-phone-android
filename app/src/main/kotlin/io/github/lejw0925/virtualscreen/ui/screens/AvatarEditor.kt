@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import io.github.lejw0925.virtualscreen.phone.ExpressionTag
 import io.github.lejw0925.virtualscreen.app.AvatarSlot
 import io.github.lejw0925.virtualscreen.app.AvsrActions
 import io.github.lejw0925.virtualscreen.app.AvsrAppState
@@ -34,23 +35,50 @@ import io.github.lejw0925.virtualscreen.ui.design.*
 @Composable
 internal fun AvatarEditor(state: AvsrAppState, actions: AvsrActions) {
     val l = LocalLanguage.current
+    var expanded by remember { mutableStateOf(false) }
+    val profile = state.avatarProfiles[state.personaId]
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        YaoSectionTitle(l.text("她的头像", "Her faces", "她的頭像"))
+        YaoCard(padding = 14.dp) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                YaoAvatar(profile?.defaultImageUri, 44.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(herName(state), style = YaoType.bodyStrong)
+                    Text(l.text("${profile?.slots?.size ?: 0} 个图片槽", "${profile?.slots?.size ?: 0} picture slots",
+                        "${profile?.slots?.size ?: 0} 個圖片槽"), style = YaoType.small)
+                }
+                YaoTextButton(if (expanded) l.text("收起头像", "Hide faces", "收起頭像")
+                    else l.text("展开头像", "Show faces", "展開頭像"), { expanded = !expanded })
+            }
+        }
+        if (expanded) AvatarEditorBody(state, actions)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AvatarEditorBody(state: AvsrAppState, actions: AvsrActions) {
+    val l = LocalLanguage.current
     val p = LocalYao.current
-    // Personas this phone has met: the current one first, then any with their own settings or history.
-    val personas = (listOf(state.personaId) + state.avatarProfiles.keys).filter { it.isNotBlank() }.distinct()
+    // History remains renderable but does not recreate a deleted editor entry.
+    val personas = state.editableAvatarPersonaIds
     if (personas.isEmpty()) { AvatarSetPanel(state, actions); return }
     var editing by remember { mutableStateOf(personas.first()) }
     if (editing !in personas) editing = personas.first()
     val personaId = editing
     val profile = state.avatarProfiles[personaId] ?: return
-    var naming by remember { mutableStateOf<AvatarSlot?>(null) }
-    var adding by remember { mutableStateOf(false) }
-    var confirmReset by remember { mutableStateOf(false) }
+    val catalog = profile.expressionCatalog?.entries.orEmpty()
+    var naming by remember(personaId) { mutableStateOf<AvatarSlot?>(null) }
+    var adding by remember(personaId) { mutableStateOf(false) }
+    var confirmReset by remember(personaId) { mutableStateOf(false) }
+
+    var deleting by remember { mutableStateOf<String?>(null) }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        YaoSectionTitle(l.text("她的头像", "Her faces", "她的頭像"),
-            hint = l.text("每张图对应几种语气，她用哪种语气说话就换成哪张；没分到的语气用普通图。",
+        Text(l.text("每张图对应几种语气，她用哪种语气说话就换成哪张；没分到的语气用普通图。",
                 "Each picture covers some tones; she wears the one matching how she speaks. Unassigned tones use the plain picture.",
-                "每張圖對應幾種語氣，她用哪種語氣說話就換成哪張；沒分到的語氣用普通圖。"))
+                "每張圖對應幾種語氣，她用哪種語氣說話就換成哪張；沒分到的語氣用普通圖。"), style = YaoType.small, color = p.inkSoft)
         if (personas.size > 1) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             personas.forEach { id ->
                 val label = if (id == state.personaId) herName(state) else id
@@ -87,8 +115,11 @@ internal fun AvatarEditor(state: AvsrAppState, actions: AvsrActions) {
                 if (profile.hasCustomDefaultImage) YaoTextButton(l.text("恢复", "Restore", "恢復"), { actions.restoreAvatarDefaultImage(personaId) })
             }
         }
-        profile.slots.forEach { slot ->
-            SlotCard(slot, state.speechEmotions, profile.slots,
+        if (profile.expressionCatalog == null) Text(l.text("尚未收到此人格的标签清单，已有分组保留。",
+            "No catalog received for this persona; existing groups are kept.", "尚未收到此人格的標籤清單，已有分組保留。"),
+            style = YaoType.small, color = p.inkFaint)
+        profile.slots.forEach { slot -> key(personaId, slot.id) {
+            SlotCard(slot, catalog, profile.slots,
                 onRename = { naming = slot },
                 onToggle = { emotion ->
                     val next = if (emotion in slot.emotions) slot.emotions - emotion else slot.emotions + emotion
@@ -97,15 +128,26 @@ internal fun AvatarEditor(state: AvsrAppState, actions: AvsrActions) {
                 onPick = { actions.pickAvatarSlotImage(personaId, slot.id) },
                 onRestore = { actions.restoreAvatarSlotImage(personaId, slot.id) },
                 onRemove = { actions.removeAvatarSlot(personaId, slot.id) })
-        }
-        val unassigned = state.speechEmotions.filter { e -> e != "neutral" && profile.slots.none { e in it.emotions } }
+        } }
+        val unassigned = catalog.filter { tag -> profile.slots.none { tag.id in it.emotions } }
         if (unassigned.isNotEmpty()) Text(l.text("用普通图的语气：", "Using the plain picture: ", "用普通圖的語氣：") +
-            unassigned.joinToString("、") { YaoWords.emotion(l, it) }, style = YaoType.small, color = p.inkFaint)
+            unassigned.joinToString("、") { it.label }, style = YaoType.small, color = p.inkFaint)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             YaoOutlineButton(l.text("加一张", "Add a picture", "加一張"), { adding = true }, Modifier.weight(1f), icon = Icons.Rounded.Add)
             if (profile.hasOverride) YaoOutlineButton(l.text("全部重置", "Reset all", "全部重置"), { confirmReset = true }, Modifier.weight(1f), danger = true)
         }
+        YaoTextButton(l.text("移除此人格", "Remove this persona", "移除此人格"),
+            { deleting = personaId }, danger = true)
     }
+
+    deleting?.let { target -> AlertDialog(onDismissRequest = { deleting = null },
+        title = { Text(l.text("移除「$target」的头像设置？", "Remove face settings for “$target”?", "移除「$target」的頭像設定？"), style = YaoType.section) },
+        text = { Text(l.text("移除本机的图片槽和标签分配，原图文件、其他人格、聊天和任务保留。若是当前连接的人格，仍会保留空白设置入口。",
+            "Remove the picture slots and label assignments on this phone. Original image files, other personas, chats and tasks stay. A blank settings entry remains for the currently connected persona.",
+            "移除本機的圖片槽和標籤分配，原圖檔案、其他人格、聊天和任務保留。若是目前連線的人格，仍會保留空白設定入口。")) },
+        confirmButton = { YaoTextButton(l.text("移除", "Remove", "移除"), { deleting = null; actions.deleteAvatarProfile(target) }, danger = true) },
+        dismissButton = { YaoTextButton(l.text("算了", "Cancel", "算了"), { deleting = null }) },
+        containerColor = p.card, shape = YaoShapes.card) }
 
     naming?.let { slot -> NameDialog(l.text("改个名字", "Rename", "改個名字"), slot.name, { naming = null }) { name ->
         naming = null; actions.renameAvatarSlot(personaId, slot.id, name) } }
@@ -123,10 +165,11 @@ internal fun AvatarEditor(state: AvsrAppState, actions: AvsrActions) {
 /** One picture: its face, its name, and the tones it covers. A tone already used by another picture moves here on tap. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SlotCard(slot: AvatarSlot, emotions: List<String>, all: List<AvatarSlot>, onRename: () -> Unit,
+private fun SlotCard(slot: AvatarSlot, emotions: List<ExpressionTag>, all: List<AvatarSlot>, onRename: () -> Unit,
     onToggle: (String) -> Unit, onPick: () -> Unit, onRestore: () -> Unit, onRemove: () -> Unit) {
     val l = LocalLanguage.current
     val p = LocalYao.current
+    var labelsExpanded by remember { mutableStateOf(false) }
     YaoCard(padding = 14.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             YaoAvatar(slot.imageUri, 52.dp)
@@ -134,18 +177,22 @@ private fun SlotCard(slot: AvatarSlot, emotions: List<String>, all: List<AvatarS
             Column(Modifier.weight(1f).clickableNoRipple(onRename)) {
                 Text(slot.name.ifBlank { l.text("未命名", "Untitled", "未命名") }, style = YaoType.bodyStrong, maxLines = 1)
                 Text(if (slot.emotions.isEmpty()) l.text("还没分到语气", "No tone yet", "還沒分到語氣")
-                    else slot.emotions.joinToString("、") { YaoWords.emotion(l, it) }, style = YaoType.small, color = p.inkSoft, maxLines = 2)
+                    else slot.emotions.joinToString("、") { id -> emotions.firstOrNull { it.id == id }?.label
+                        ?: "$id (${l.text("未在当前清单", "Not in current catalog", "未在目前清單")})" }, style = YaoType.small, color = p.inkSoft, maxLines = 2)
             }
             YaoIconButton(Icons.Rounded.Edit, l.text("改名", "Rename", "改名"), onRename, size = 34.dp)
             YaoIconButton(Icons.Rounded.Image, l.text("换图", "Change picture", "換圖"), onPick, size = 34.dp)
             YaoIconButton(Icons.Rounded.Delete, l.text("删掉这张", "Remove", "刪掉這張"), onRemove, size = 34.dp)
         }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            emotions.filter { it != "neutral" }.forEach { emotion ->
+        YaoTextButton(if (labelsExpanded) l.text("收起标签", "Hide labels", "收起標籤")
+            else l.text("展开标签", "Show labels", "展開標籤"), { labelsExpanded = !labelsExpanded })
+        if (labelsExpanded) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            emotions.forEach { tag ->
+                val emotion = tag.id
                 val mine = emotion in slot.emotions
                 val elsewhere = !mine && all.any { it.id != slot.id && emotion in it.emotions }
                 Box(Modifier.clip(YaoShapes.pill).clickableNoRipple { onToggle(emotion) }) {
-                    Text(YaoWords.emotion(l, emotion), style = YaoType.small,
+                    Text(tag.label, style = YaoType.small,
                         color = when { mine -> p.onInk; elsewhere -> p.inkFaint; else -> p.inkSoft },
                         modifier = Modifier.clip(YaoShapes.pill).background(if (mine) p.ink else p.layer)
                             .padding(horizontal = 10.dp, vertical = 4.dp))

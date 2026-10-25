@@ -14,6 +14,10 @@ fun phoneUsageMessage(language: UiLanguage, code: String?): String? = when (code
         "这一步在后台虚拟屏做不了，原因见 original_failure_code；常见的 APP_RESTART_CONFIRMATION_REQUIRED 是这个应用正开在用户的屏幕上，不能同时在虚拟屏再开一份，并不是应用不能用。手机上已经在问用户要不要借用主屏，还没操作主屏；用 phone_get_status 查用户的选择，选之前不要说做成或做不成，也不要改用电脑。",
         "This step cannot run on the background virtual screen; see original_failure_code. The common APP_RESTART_CONFIRMATION_REQUIRED means the app is open on the user's screen and cannot open a second copy on the virtual screen; the app itself still works. The phone is asking the user whether to lend the main screen, and nothing has been done on it yet. Check the choice with phone_get_status; until then do not report success or failure, and do not switch to the computer.",
         "這一步在背景虛擬螢幕做不了，原因見 original_failure_code；常見的 APP_RESTART_CONFIRMATION_REQUIRED 是這個應用正開在使用者的螢幕上，不能同時在虛擬螢幕再開一份，並不是應用不能用。手機上已經在問使用者要不要借用主螢幕，還沒操作主螢幕；用 phone_get_status 查使用者的選擇，選之前不要說做成或做不成，也不要改用電腦。")
+    "MAIN_SCREEN_REQUEST_PENDING" -> language.text(
+        "手机上已显示本次主屏许可请求；只有卡片点按才生效，尚未操作主屏。",
+        "The phone shows a main-screen permission request for this task. Only a card tap grants permission; no main-screen operation has occurred.",
+        "手機上已顯示本次主螢幕許可請求；只有卡片點按才生效，尚未操作主螢幕。")
     "NOTIFICATION_ACCESS_REQUIRED" -> language.text(
         "QQ 音乐的专用工具需要“通知使用权”，现在没开，所以这两个工具用不了；这不是手机没有操作权限，屏幕上操作 QQ 音乐仍然可以。这次委托没有说可以改在屏幕上做时，先结束这一步，把缺这项权限交回：在系统设置里给本应用打开通知使用权就能用，或者由用户决定改在屏幕上操作。已经说可以走屏幕时就继续，结果里仍写明缺这项权限。不要改用电脑。",
         "QQ Music's dedicated tools need notification access, which is off, so they cannot be used; this is not a lack of permission to operate the phone, and operating QQ Music on the screen still works. If this delegation did not say the screen may be used instead, end this step and report the missing permission: granting this app notification access in system settings enables the tools, or the user can choose screen operation. If the screen was already allowed, continue and still state the missing permission in the result. Do not switch to the computer.",

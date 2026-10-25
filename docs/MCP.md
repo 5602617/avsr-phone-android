@@ -1,5 +1,7 @@
 # MCP 接入
 
+本文面向需要直接接入手机本地 MCP 的开发者。日常登录与聊天见[客户端快速开始](../README.md#快速开始)；客户端—宿主手机协议以[插件协议文档](https://github.com/5602617/astrbot_plugin_avsr_phone/tree/main/docs/protocol)为准。旧工具调研与实测记录见[上游历史资料](archive/upstream/README.md)，不作为当前设备兼容承诺。
+
 ## 服务与认证
 
 首页“MCP 服务”开关或设置 → MCP 连接可以开关服务。开启前检查 Root / Shizuku、通知、画中画和后台运行权限；缺失时弹窗提供授权入口。授权 Root 或 Shizuku 后自动启用虚拟屏节点服务，并移除本服务的系统无障碍快捷按钮，保留其他服务。默认地址为 `http://127.0.0.1:8732/mcp`；通过 ADB 使用 `adb forward tcp:8732 tcp:8732` 即可在电脑访问。开启局域网访问后设置页显示手机的局域网地址。

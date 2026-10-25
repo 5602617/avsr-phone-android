@@ -1,178 +1,88 @@
-<div align="center">
-  <img src="docs/images/logo.svg" width="104" alt="Virtual Screen" />
-  <h1>Virtual Screen · 虚拟屏</h1>
-  <p><strong>A separate Android display for your agent. Your phone stays yours.</strong></p>
-  <p><a href="README.md">简体中文</a> · English</p>
-  <p>
-    <a href="https://github.com/lejw0925/android-virtual-screen/releases/tag/v0.1.0"><img src="https://img.shields.io/badge/Release-0.1.0-2D6846" alt="Release 0.1.0" /></a>
-    <a href="https://github.com/lejw0925/android-virtual-screen/actions/workflows/build.yml"><img src="https://github.com/lejw0925/android-virtual-screen/actions/workflows/build.yml/badge.svg" alt="Build" /></a>
-    <img src="https://img.shields.io/badge/Android-13%2B-3DDC84" alt="Android 13+" />
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm_Noncommercial-blue" alt="PolyForm Noncommercial" /></a>
-  </p>
-</div>
+# shealive · Phone client
 
-Virtual Screen is an Android app that gives an AI agent an isolated virtual display and runs an authenticated MCP server on the phone. The agent can discover, launch, and operate apps on that display while you keep using the phone's main screen. You can view, take over, or stop an operation at any time.
+[简体中文](README.md)
 
-<p align="center">
-  <img src="docs/images/material3-settings.png" width="240" alt="On-device permissions and backend screen" />
-  <img src="docs/images/material3-connections-large.png" width="240" alt="On-device MCP connection settings" />
-  <img src="docs/images/material3-home.png" width="240" alt="Virtual Screen home" />
-</p>
+The shealive Android client brings chat, voice and a floating companion to your phone. Connect it to the [AstrBot phone plugin](https://github.com/5602617/astrbot_plugin_avsr_phone) to talk with her, choose her pictures, watch phone operations and take over when she needs your help.
 
-## Release 0.1.0
+- **Chat and voice:** text, recordings, speech playback and a floating orb outside the app.
+- **Her faces:** per-persona picture slots that respond to reply labels from the host.
+- **Her screen:** watch background work and choose when she may use your main screen, hand over control or stop.
+- **Cards and waits:** provide missing input, choices or approval through interaction cards. Waiter returns the answer to the host and resumes the original call.
 
-Download `virtual-screen-0.1.0.apk` and `SHA256SUMS` from [GitHub Releases](https://github.com/lejw0925/android-virtual-screen/releases/tag/v0.1.0). The app requires Android 13 (API 33) or later and either a working Root `su` or a running, authorized Shizuku service. Device compatibility and background behavior can vary by ROM.
+This repository maintains the Android client. The host plugin manages accounts; administrators must configure the chat model, STT (speech recognition) and TTS (speech synthesis) on the host. Personas, persistent memory and proactive behavior come from the host. Installing the plugin on native AstrBot does not add AVSR persistent Task, memory or proactive Wake services; the client does not implement these services itself.
 
-## Features
+## Downloads and version
 
-- **Isolated virtual display.** Agent launches and input are scoped to a display created by this app. Failed operations never fall back to the phone's main screen. Cross-display conflicts require phone approval before an app is restarted.
-- **Visible progress and takeover.** PiP shows the remote display; PiP is read-only. Expand the app's full-screen preview or use the notification to take over locally, which revokes the remote control lease.
-- **19 MCP tools.** Control, display, app, observation, input, and wait operations. Tree observations can skip screenshots; fresh observation IDs and session receipts reject stale operations and let clients check uncertain results without replaying input.
-- **Root and Shizuku.** Both privilege backends share the virtual-display engine, MCP protocol, and input constraints.
-- **Flexible connections.** Loopback, LAN, frpc, and Cloudflare Tunnel. MCP and tunnels start disabled; credentials are stored in the app's private encrypted storage.
-- **On-device settings.** English, Simplified Chinese, and Traditional Chinese; light and dark themes, dynamic color, onboarding, and local activity logs.
+For the first public release, **0.1.0**, get the signed APK, SHA256 checksums, signing certificate and release notes from the [v0.1.0 release page](https://github.com/5602617/avsr-phone-android/releases/tag/v0.1.0), or [download the APK directly](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0.apk). See the [v0.1.0 tag](https://github.com/5602617/avsr-phone-android/tree/v0.1.0) for the matching source.
 
-## Get Started
+[0.1.0 release notes](docs/RELEASE_NOTES_0.1.0.md) · [Changelog](CHANGELOG.md) · [Documentation](docs/README.md)
 
-1. Install the [0.1.0 APK](https://github.com/lejw0925/android-virtual-screen/releases/tag/v0.1.0) and install a compatible Root manager or Shizuku. If using Shizuku, start its service first.
-2. Open Virtual Screen, select Root or Shizuku under **Permissions and backend**, and grant access. Enable the app's accessibility service for node targeting and Unicode text editing. Allow notifications for approval and takeover actions, and PiP for automatic previews.
-3. Enable MCP. For a USB debugging connection, run this on the computer:
+## Quick start
 
-   ```sh
-   adb forward tcp:8732 tcp:8732
-   ```
+You need Android 13 or later and an enabled shealive host plugin. Ask the host administrator for the connection address and phone login account. If you run your own host, complete the [plugin quick start](https://github.com/5602617/astrbot_plugin_avsr_phone#readme) first.
 
-   The default MCP endpoint is `http://127.0.0.1:8732/mcp`. Enable LAN access in settings for a computer on the same network, or configure frpc or Cloudflare Tunnel for public access.
+1. **Prepare the client:** download the signed APK from the [v0.1.0 release page](https://github.com/5602617/avsr-phone-android/releases/tag/v0.1.0) and verify it against `SHA256SUMS` there before installing. Android may ask you to allow your browser or file manager to install unknown apps. For a Debug development APK, ask the administrator to set the plugin’s `apk_package` to `dev.avsr.phone.debug`, save and reload the plugin. Officially signed or self-signed Release APKs keep the default `dev.avsr.phone`. This matches the installed package; it does not change the application ID. See the update guidance below.
+2. **Sign in:** enter **Host address, Account and Password** in “Let's meet.” For example, a host on your local network might use `http://192.168.1.20:12420`; replace this with your host's address. The phone account is configured in the host plugin, separately from the AstrBot dashboard account.
+3. **Open chat:** select **“Chat first, finish setup later.”** Device-control pairing is not required for your first text conversation.
+4. **Receive a reply:** type “Hi” in “Tell her what to do” and send it. Once you receive a reply, you can keep chatting or enable voice, the floating panel and phone controls below.
 
-4. Put the phone-generated Bearer Token in your MCP client configuration:
+If the connection fails, check the IP address and port. Use the plugin's phone connection port (default `12420`), not the AstrBot dashboard port. `localhost` and `127.0.0.1` point to the phone itself, not another computer. Keep the explicit `http://` for the local-network example; omitting the scheme defaults to HTTPS. Public hosts use HTTPS.
 
-   ```json
-   {
-     "mcpServers": {
-       "android-virtual-screen": {
-         "type": "http",
-         "url": "http://127.0.0.1:8732/mcp",
-         "headers": {
-           "Authorization": "Bearer <phone-generated-token>"
-         }
-       }
-     }
-   }
-   ```
+## Enable phone controls
 
-5. The agent acquires exclusive control, creates a virtual display, discovers and launches an app, observes its nodes or screenshot, and performs actions. Release control when finished. See [MCP integration](docs/MCP.md) for protocol details, tool parameters, and client-specific notes.
+1. **First startup happens on the phone**, with no computer, USB or separate Shizuku app. Connect to Wi-Fi and follow **“Let her use the phone → Start pairing”** to open Developer options. Enable Wireless debugging, allow the current network, then choose Pair device with pairing code. Keep the system dialog open and enter its six-digit code through this app's notification. Pairing automatically connects wireless ADB and starts the built-in service. Return to the app; **“Built-in privileged service running”** confirms startup. No extra command is needed. If already paired but not running, select **“Restore paired service”** and follow any error shown.
+2. In **“A few more permissions”**, review the system settings for **Accessibility, Floating panel, Microphone and Notifications**. Default assistant is optional; unrestricted battery use is suggested. You can inspect phone access and restore the paired service later under Settings.
+3. Choose how she may use your screen and tap **“Done, let's start.”** Later, **“Settings → Your screen”** offers **“Ask first / Allowed.”** Device and background behavior varies by Android system.
 
-## Use Case Diagram
+## Chat, voice and floating panel
 
-```mermaid
-flowchart LR
-    owner[Phone owner]
-    agent[AI agent / MCP client]
-    subgraph app[Virtual Screen Android app]
-        authorize([Select and authorize Root / Shizuku])
-        configure([Configure MCP and network access])
-        approve([Approve control requests and app restarts])
-        takeover([View preview, take over, or stop])
-        authenticate([Authenticate with Bearer Token and discover tools])
-        lease([Acquire / release exclusive control])
-        manage([Create display and launch apps])
-        observe([Read nodes / capture screenshots])
-        operate([Perform display-scoped input])
-    end
-    owner --> authorize
-    owner --> configure
-    owner --> approve
-    owner --> takeover
-    agent --> authenticate
-    agent --> lease
-    agent --> manage
-    agent --> observe
-    agent --> operate
-    configure -. optional .-> tunnel[frpc / Cloudflare Tunnel]
-    takeover --> display[App on the virtual display]
-    manage --> display
-    observe --> display
-    operate --> display
-```
+- **Chat:** type in “Tell her what to do” and send. The adjustment icon on the left opens Settings. The header shows connection status and the current persona's name.
+- **Voice:** tap “Talk,” then send when finished, or cancel the recording. Voice replies can be stopped and replayed. Recognition and speech require available providers configured on the host.
+- **Reply preference:** under “How she replies,” choose “Her call / Voice / Text.” “Hands-free” can listen and send when you pause; you decide whether to enable it.
+- **Floating panel:** enable “Show her when you leave the app,” or use “Fold into the orb” from chat. Tap to type, double-tap to return to the app, or hold to talk. Android overlay permission is required.
 
-## Architecture
+## Her faces
 
-```mermaid
-flowchart TB
-    client[AI agent / MCP client]
-    subgraph phone[Android phone]
-        subgraph app[Virtual Screen app]
-            ui[Compose home, settings, and preview]
-            service[Foreground service and runtime coordination]
-            mcp[Ktor Streamable HTTP MCP]
-            auth[Bearer auth, sessions, and request receipts]
-            lease[Control leases, approvals, and observation checks]
-            tools[19-tool MCP registry]
-            session[VirtualScreenSessionManager]
-            backend[VirtualScreenBackend interface]
-            root[RootBackend / su process]
-            shizuku[ShizukuBackend / UserService]
-            engine[Shared PrivilegedDisplayEngine]
-            display[Android virtual display and target app]
-            access[Accessibility node service]
-            preview[Surface mirror and PiP / full-screen preview]
-            tunnel[TunnelManager]
-            frpc[Bundled frpc / cloudflared]
-        end
-    end
-    client -->|HTTP + Bearer Token| mcp
-    mcp --> auth --> tools --> lease --> session
-    ui --> service
-    service --> mcp
-    service --> tunnel --> frpc
-    session --> backend
-    backend --> root --> engine
-    backend --> shizuku --> engine
-    engine --> display
-    access --> session
-    display --> preview
-    owner[Phone owner] --> ui
-    owner -->|Local takeover| preview
-    frpc -. tunnel connection .-> client
-```
+Expand **“Settings → Her faces”** to configure each connected Persona's plain picture, named picture slots and label assignments. Labels come from the host catalog. Unassigned or unknown labels use the plain picture. Both the whole section and each slot's labels can collapse.
 
-## Security and Behavior Boundaries
+“Remove this persona” asks for confirmation and removes that persona's local face panel, slots, label assignments and related settings. Original image files, other personas, chats and tasks remain. The connected persona keeps a blank settings entry. A default mark appears without a configured picture; imported user images are not release assets.
 
-- All remote MCP requests require a Bearer Token. Rotating it invalidates old tokens. Do not commit tokens or put them in logs or public messages.
-- Device operations require an exclusive lease owned by the current session. Each authorized operation extends its five-minute idle deadline. Expired leases, stale observations, and ambiguous selectors are rejected.
-- Input is restricted to the virtual display. Remote PiP only displays the screen; phone touch or notification takeover revokes the remote lease. An agent cannot approve permission dialogs on the phone's main display.
-- MCP and tunnels start disabled. LAN and public tunnels increase network reachability; enable them only when needed and protect the client token.
-- Accessibility provides node access and assists text entry. Node features are limited without it. Multi-display, PiP, and background behavior varies across apps and ROMs.
+## Background work, her screen and handoff
 
-## Development and Validation
+“Background” means she operates in her own screen instead of occupying the main screen you are using. The eye icon in chat or **“Settings → Phone access → View the virtual screen”** opens **“Her screen.”** This preview shows progress; it does not take control.
 
-Use JDK 25 and Android SDK 37 (`platforms;android-37.0`, `build-tools;37.0.0`):
+When a step needs your input, **“This step needs you”** appears. Tap **“I'll handle it”** to enter the handoff screen, then **“Done, continue”** when finished. You can also choose “Handle later” or “End this task.” Running tasks provide a “Stop” control.
 
-```sh
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
-```
+In “Ask first” mode, a request to use your main screen offers **“Just this once / Always allow / Not now.”** You can still cancel during the countdown. “Allowed” in settings and “Use main screen” beside the composer are also explicit choices. Device permission cards require their own taps; a chat message saying “allow” does not replace the card.
 
-Run the same full build used by GitHub Actions:
+## Compatibility and updates
 
-```sh
-./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease :device-fixture:assembleDebug :app:assembleDebugAndroidTest
-```
-
-Actions run JVM tests, Lint, Debug / unsigned Release, fixture, and instrumentation APK builds on `main`, pull requests, and manual dispatch. A matching `vX.Y.Z` or `vX.Y.Z-beta[.N]` tag runs signing and publishes the APK with `SHA256SUMS`; beta tags become GitHub prereleases. Signing material stays in repository secrets. See [Build and release](docs/BUILD.md) for the toolchain and the pinned provenance and build steps for frpc / cloudflared.
-
-See the [changelog](CHANGELOG.md) and [0.1.0 device report](docs/RELEASE_VALIDATION_0.1.0.md) for current fixes and validation. The previous physical Android 17 / HyperOS 4 Root run passed all 19 tools; see [Android 17 and home validation](docs/ANDROID17_FIX_VALIDATION.md). Shizuku's Android 15 emulator results are in [Beta backend comparison](docs/BACKEND_EMULATOR_VALIDATION.md). See [1033 validation](docs/TUNNEL_1033_FIX_VALIDATION.md) for continuous Cloudflare health checks and the 200-second background device test, and [background connection validation](docs/TUNNEL_BACKGROUND_VALIDATION.md) for vendor freezing, the app-specific unrestricted battery setting, and screen-off testing while charging. Unplugged deep Doze and all ROM combinations remain untested. Historical results are in [home layout validation](docs/MCP_HOME_VALIDATION.md) and [release validation](docs/RELEASE_VALIDATION.md).
-
-| Guide | Contents |
+| Component | Current scope |
 | --- | --- |
-| [MCP integration](docs/MCP.md) | Authentication, client setup, tools, leases, observations, and receipts |
-| [Public tunnels](docs/TUNNELS.md) | frpc, Cloudflare, credentials, and network requirements |
-| [Build and release](docs/BUILD.md) | Toolchain, native programs, signing, and GitHub Actions |
-| [Release validation](docs/RELEASE_VALIDATION.md) | Device coverage, measurements, and known limits |
-| [Getting started and testing](docs/VALIDATION.md) | Authorization and device validation workflows |
-| [Contributing](AGENTS.md) | Repository structure, conventions, tests, and security boundaries |
+| Android | Android 13 or later; background behavior, Wireless debugging and app compatibility depend on the device |
+| Host plugin | `astrbot_plugin_avsr_phone` 0.1.0, phone protocol v1 with capability negotiation |
+| Native AstrBot | Text, voice, faces and device interactions verified with 4.29.3; disabling during an active call and abnormal disconnections remain unverified |
+| AVSR host extensions | Depend on host capabilities; fresh-install combinations have not completed validation |
 
-## Credits and License
+Voice needs host STT/TTS providers; expression labels come from the host. No character picture set is bundled. Native AstrBot interaction waits do not provide persistent task recovery across restarts.
 
-Parts of the virtual-display engine are adapted from [ETA](https://github.com/Mangi-11/Eta). The UI uses Jetpack Compose Material 3; tunnels use [frp](https://github.com/fatedier/frp) and [cloudflared](https://github.com/cloudflare/cloudflared). Tool design draws on research into [Mobile Next](https://github.com/mobile-next/mobile-mcp), [Android-MCP](https://github.com/CursorTouch/Android-MCP), [android-remote-control-mcp](https://github.com/danielealbano/android-remote-control-mcp), and [PhoneUse](https://github.com/nidhoggfgg/PhoneUse).
+Updates require the same application identity and a compatible signature. Use the same distribution channel. If an update fails, check the signature and version before uninstalling or clearing data, which would lose local settings. A self-signed build generally cannot replace an installation signed by someone else.
 
-Licensed under **[PolyForm Noncommercial 1.0.0](LICENSE)** with upstream Required Notices preserved. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for component licenses and native provenance.
+## Troubleshooting
+
+- **Sign-in fails:** check that the phone can reach the host address and phone-plugin port, and use the plugin account rather than an AstrBot dashboard account.
+- **Chat works, voice does not:** check microphone permission and host STT/TTS configuration. Text chat can be used first.
+- **Chat works, controls do not:** check pairing and Accessibility under Phone access, and look for permission cards waiting for a tap.
+- **Connection drops in the background:** check notifications, overlay permission and battery restrictions. System termination and vendor power management can still interrupt it.
+
+Report ordinary problems through [Issues](https://github.com/5602617/avsr-phone-android/issues), including app version, Android/device, reproduction steps and a sanitized description. Read [SECURITY](SECURITY.md) before reporting a security issue; keep credentials, chats and private screens out of public reports.
+
+## Contributing and development
+
+The [documentation index](docs/README.md) separates user, developer and source information. [CONTRIBUTING](CONTRIBUTING.md) covers source layout, setup and contributions; [BUILD](docs/BUILD.md) covers toolchains, native programs and signed builds. Advanced device interfaces and networking are described in [MCP](docs/MCP.md) and [TUNNELS](docs/TUNNELS.md).
+
+## Acknowledgements and license
+
+This client is based on [android-virtual-screen](https://github.com/lejw0925/android-virtual-screen), with AstrBot integration, chat, voice and persona pictures. Parts of the underlying implementation originate in [ETA](https://github.com/Mangi-11/Eta). Thanks to the upstream authors and contributors. See [upstream and changes](docs/UPSTREAM.md) for the baseline.
+
+The source is available under [PolyForm Noncommercial 1.0.0](LICENSE), permitting noncommercial use within its terms. This is a source-available, noncommercial license. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for component licenses and copyright notices.

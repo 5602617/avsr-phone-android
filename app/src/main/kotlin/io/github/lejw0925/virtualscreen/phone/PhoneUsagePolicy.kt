@@ -31,6 +31,8 @@ data class PhoneUsageState(
     val handoffId: String? = null,
     val handoffAction: String = "",
     val executionId: String? = null,
+    val borrowRequestSource: String? = null,
+    val borrowRequestReason: String? = null,
 ) {
     val mainScreenAllowed get() = phase == "running_main" && taskId != null
     val humanHandoff get() = phase in setOf("waiting_human", "human_control")
@@ -120,16 +122,30 @@ class PhoneUsagePolicy(
     @Synchronized fun backgroundFailed(taskId: String, code: String): Boolean {
         val s = mutable.value
         if (s.taskId != taskId || s.phase != "running_virtual" || s.retryUsed) return false
+        waitForBorrow(s.copy(failureCode = code,
+            failureCategory = if (code == "SECURE_WINDOW") "protected_content" else "virtual_screen_unavailable",
+            borrowRequestSource = "virtual_failure", borrowRequestReason = null))
+        return true
+    }
+    /** Requests consent only. Approval still comes exclusively from the existing local card. */
+    @Synchronized fun requestMainScreen(taskId: String, connectionId: String, reason: String): Boolean {
+        val s = mutable.value
+        check(s.taskId == taskId && s.connectionId == connectionId) { "PHONE_TASK_BINDING_REQUIRED" }
+        if (s.mainScreenAllowed || s.phase in setOf("waiting_borrow", "countdown")) return false
+        check(s.phase == "running_virtual") { s.failureCode ?: "PHONE_TASK_BINDING_REQUIRED" }
+        waitForBorrow(s.copy(failureCode = null, failureCategory = null,
+            borrowRequestSource = "direct_request", borrowRequestReason = reason))
+        return true
+    }
+    private fun waitForBorrow(s: PhoneUsageState) {
+        val taskId = checkNotNull(s.taskId)
         timer?.cancel()
         val deadline = nowMillis() + s.borrowTimeoutSeconds * 1000L
-        mutable.value = s.copy(phase = "waiting_borrow", failureCode = code,
-            failureCategory = if (code == "SECURE_WINDOW") "protected_content" else "virtual_screen_unavailable",
-            deadlineMs = deadline)
+        mutable.value = s.copy(phase = "waiting_borrow", deadlineMs = deadline)
         timer = scope.launch {
             delay(s.borrowTimeoutSeconds * 1000L)
             expire(taskId, deadline)
         }
-        return true
     }
     @Synchronized fun expire(taskId: String, deadline: Long) {
         val s = mutable.value
@@ -149,7 +165,8 @@ class PhoneUsagePolicy(
         if (choice == "decline") { end("failed", "MAIN_SCREEN_DECLINED", "declined"); return }
         if (choice == "always") setMode("global")
         mutable.value = mutable.value.copy(phase = "countdown", countdownSeconds = 3,
-            deadlineMs = nowMillis() + 3000L, decision = "borrowed", grantSource = "borrow_$choice", retryUsed = true)
+            deadlineMs = nowMillis() + 3000L, decision = "borrowed", grantSource = "borrow_$choice",
+            retryUsed = s.retryUsed || s.borrowRequestSource != "direct_request")
         timer = scope.launch {
             repeat(3) { index ->
                 delay(1000)
@@ -195,6 +212,7 @@ class PhoneUsagePolicy(
         "task_input_id" to s.inputId, "task_phase" to s.phase, "execution_id" to s.executionId, "borrow_decision" to s.decision,
         "main_screen_grant_source" to s.grantSource, "main_screen_allowed" to s.mainScreenAllowed,
         "main_screen_retry_used" to s.retryUsed, "borrow_deadline_ms" to s.deadlineMs,
+        "borrow_request_source" to s.borrowRequestSource, "borrow_request_reason" to s.borrowRequestReason,
         "countdown_seconds" to s.countdownSeconds, "task_failure_code" to s.failureCode,
         "task_failure_category" to s.failureCategory, "restore_status" to s.restoreStatus,
         "handoff_reason" to s.handoffReason, "handoff_session_id" to s.handoffSessionId, "handoff_id" to s.handoffId,

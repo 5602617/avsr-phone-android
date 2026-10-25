@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Persona</string>
+    <string name="app_name">shealive</string>
     <string name="accessibility_description">观察和操作本 App 的虚拟屏节点。仅在需要虚拟屏自动化时启用。</string>
     <string name="notification_channel">虚拟屏</string>
     <string name="notification_running">虚拟屏服务已启用</string>

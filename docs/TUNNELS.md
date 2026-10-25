@@ -46,7 +46,7 @@ auth.token = "<your-frps-token>"
 
 设置页的「连接诊断」打开经过隐藏处理的最近日志，可一次复制。断网后由隧道程序及进程管理器重连；重连不会重放 MCP 设备操作。MCP 停止时也停止隧道。用户名、密码只在 Cloudflare 官方浏览器页面输入。
 
-本次页面调整与两个 Cloudflare 真机测试见 [公网隧道验证](TUNNEL_VALIDATION.md)；历史验证与其他环境限制见 [VALIDATION.md](VALIDATION.md)。
+上游页面调整与两个 Cloudflare 真机测试见 [上游历史公网隧道验证](archive/upstream/docs/TUNNEL_VALIDATION.md)；历史验证与其他环境限制见 [上游历史验证](archive/upstream/docs/VALIDATION.md)。
 
 ### 切到后台后断连
 
@@ -54,7 +54,7 @@ auth.token = "<your-frps-token>"
 
 在本 App 的「后台运行 → 应用后台权限」打开系统应用信息，进入「省电策略」并选择「无限制」，同时保留 Android 电池优化豁免。本机 HyperOS 4 的系统代码和日志确认「无限制」会把包名加入启动应用冻结路径的豁免名单；其他厂商与系统版本需要分别验证。前台服务、定时检查和系统自启动权限各有用途，不能只靠其中一项保证后台连接。
 
-本机配置与前后台验证细节见 [后台断连验证](TUNNEL_BACKGROUND_VALIDATION.md)。
+本机配置与前后台验证细节见 历史后台断连验证（`TUNNEL_BACKGROUND_VALIDATION.md`，该历史引用文档未随当前仓提供）。
 
 ## 连接状态和日志
 

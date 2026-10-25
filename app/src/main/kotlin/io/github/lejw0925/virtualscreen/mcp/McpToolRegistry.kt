@@ -79,6 +79,10 @@ class McpToolRegistry(private val sessions: VirtualScreenSessionManager,
         ).plus(if (phone == null) emptyList() else listOf(
             tool(l,"phone_get_status",t("查看手机这一端的现状：是否连着、现在能不能操作、不能操作的原因（例如用户接管或手动停止），以及虚拟屏和各项能力是否可用。包含使用模式、本任务授权、借屏等待或倒数、拒绝、未回应、中断及归还状态。开始手机任务前，或操作被拒绝后，先看这里；等待借屏时保留原任务并查询此状态，不重新托事或重放输入。","Check this phone's connection, whether it can currently be operated, reasons it cannot (such as user takeover or manual stop), and availability of the virtual screen and capabilities. Includes usage mode, task grant, borrow wait/countdown, refusal, no response, interruption and return status. Check before a task or after a rejection. Keep the same task while awaiting consent and query this status; do not resubmit the task or replay input.","查看手機這一端的現況：是否連著、現在能不能操作、不能操作的原因（例如使用者接管或手動停止），以及虛擬螢幕和各項能力是否可用。包含使用模式、本任務授權、借螢幕等待或倒數、拒絕、未回應、中斷及歸還狀態。開始手機任務前或操作被拒絕後先看這裡；等待借螢幕時保留原任務並查詢狀態，不重新託事或重播輸入。"),readOnly=true)
         )).plus(if (phone == null) emptyList() else listOf(
+            tool(l,"phone_request_main_screen",t(
+                "请求本任务的主屏许可。手机显示原借屏卡，只有卡片点按才生效；立即返回当前许可或等待状态，不操作主屏。",
+                "Request main-screen permission for this task. The phone shows its borrow card; only a card tap grants permission. Returns the current permission or waiting state immediately without operating the main screen.",
+                "請求本任務的主螢幕許可。手機顯示原借螢幕卡，只有卡片點按才生效；立即傳回目前許可或等待狀態，不操作主螢幕。")),
             tool(l,"phone_request_handoff",t(
                 "让用户亲眼看或亲手处理当前虚拟屏页面。用户说想看看、切过来、给我看，或想自己操作，或这一步需要用户确认时调用。保留同一任务和页面，立即暂停远程操作，在手机上显示请求卡片；用户点“我来处理”后才会在主屏全屏显示这个页面。返回 handoff_requested 只表示卡片已发出，不表示用户已经看到；之后用 phone_get_status 查看是否已打开（human_control）或已交还。交还后重新取得控制并观察，不重放之前的操作。没有调用它之前，不要说已经切过去或已经给用户看了。",
                 "Let the user see or handle the current virtual-screen page themselves. Call it when the user asks to look, switch over or be shown, wants to operate it, or this step needs the user's confirmation. Keeps the same task and page, immediately pauses remote operations and shows a request card on the phone; the page opens full screen on the main display only after the user taps \"I'll handle it\". handoff_requested only means the card was sent, not that the user has seen it; then use phone_get_status to see whether it was opened (human_control) or handed back. After hand-back, acquire control again and observe; never replay earlier actions. Before calling it, never say you have switched over or shown the user.",
@@ -171,6 +175,20 @@ class McpToolRegistry(private val sessions: VirtualScreenSessionManager,
                 "main_screen_observe", "main_screen_node_action", "main_screen_gesture", "main_screen_back", "main_screen_launch_app", "main_screen_finish" ->
                     checkNotNull(mainScreen).call(name,owner,args,taskId)
                 "phone_get_status" -> checkNotNull(phone).status()
+                "phone_request_main_screen" -> {
+                    val binding = checkNotNull(phone)
+                    val created = binding.requestMainScreen(checkNotNull(taskId) { "PHONE_TASK_BINDING_REQUIRED" }, purpose)
+                    val usage = binding.usageReceipt()
+                    val result = when (usage["task_phase"]) {
+                        "waiting_borrow" -> OperationEnvelope.failure(
+                            if (usage["borrow_request_source"] == "direct_request") "MAIN_SCREEN_REQUEST_PENDING" else "MAIN_SCREEN_BORROW_PENDING")
+                        "countdown" -> OperationEnvelope.failure("MAIN_SCREEN_COUNTDOWN")
+                        else -> OperationEnvelope.success("message" to l.text(
+                            "本任务已有主屏许可，未新增请求。", "This task already has main-screen permission; no new request was created.", "本任務已有主螢幕許可，未新增請求。"))
+                    }
+                    result.copy(values = result.values + usage + mapOf("main_screen_request_created" to created,
+                        "retry_automatically" to false, "recovery_tools" to listOf("phone_get_status")))
+                }
                 "phone_request_handoff" -> {
                     val binding = checkNotNull(phone)
                     check(binding.required) { "PHONE_TASK_BINDING_REQUIRED" }
@@ -198,7 +216,7 @@ class McpToolRegistry(private val sessions: VirtualScreenSessionManager,
                 "qqmusic_control_playback" -> checkNotNull(qqMusic).control(args.getString("session_id"),
                     args.getString("command"),if(args.has("position_ms")) args.getLong("position_ms") else null)
                 "acquire_control" -> leaseResult(sessions.acquireLease(owner))
-                "release_control" -> when(val decision=sessions.releaseLease(owner,token)) {
+                "release_control" -> when(val decision=mainScreen?.releaseControl(owner,token) ?: sessions.releaseLease(owner,token)) {
                     is LeaseDecision.Granted -> OperationEnvelope.success("released" to true)
                     is LeaseDecision.Rejected -> OperationEnvelope.failure(decision.code)
                 }
@@ -253,7 +271,7 @@ class McpToolRegistry(private val sessions: VirtualScreenSessionManager,
                 }
             }
             val evaluated = evaluatePhoneResult(name, taskId, result)
-            val waitingForUser = evaluated.code == "MAIN_SCREEN_BORROW_PENDING" ||
+            val waitingForUser = evaluated.code in setOf("MAIN_SCREEN_BORROW_PENDING", "MAIN_SCREEN_REQUEST_PENDING", "MAIN_SCREEN_COUNTDOWN") ||
                 (evaluated.values["native_confirmation_kind"] == "alarm" && evaluated.values["phase"] == "pending")
             val activityPhase = if (evaluated.ok) "completed" else if (waitingForUser) "waiting_user" else "failed"
             complete(activity,activityPhase,evaluated.code)
@@ -281,7 +299,7 @@ class McpToolRegistry(private val sessions: VirtualScreenSessionManager,
                 "execution_status" to if(activity==null || e.code() in setOf("NO_VIRTUAL_SCREEN","STALE_OBSERVATION","LEASE_REQUIRED")) "rejected" else "unknown")
                 .let { it.copy(values=it.values+unknownArguments) }
             val evaluated = evaluatePhoneResult(name, taskId, failure)
-            receipts.record(owner, requestId, mapOf("tool" to name, "phase" to if (evaluated.code == "MAIN_SCREEN_BORROW_PENDING") "waiting_user" else "failed",
+            receipts.record(owner, requestId, mapOf("tool" to name, "phase" to if (evaluated.code in setOf("MAIN_SCREEN_BORROW_PENDING", "MAIN_SCREEN_REQUEST_PENDING", "MAIN_SCREEN_COUNTDOWN")) "waiting_user" else "failed",
                 "ok" to false, "code" to evaluated.code) + evaluated.values.filterKeys { it in
                     setOf("execution_status", "effect_status", "requires_observation") + (mainScreen?.policy?.receipt()?.keys ?: emptySet()) })
             val paused = phone?.flow?.value?.takeIf { e.code() == "PHONE_EXECUTION_PAUSED" }
@@ -293,7 +311,7 @@ class McpToolRegistry(private val sessions: VirtualScreenSessionManager,
     private fun evaluatePhoneResult(name: String, taskId: String?, result: OperationEnvelope): OperationEnvelope {
         val control = mainScreen ?: return result
         val policy = control.policy
-        if (taskId != null && taskId != policy.state.value.taskId && name in io.github.lejw0925.virtualscreen.phone.PhoneSession.SCREEN_TOOLS) {
+        if (taskId != null && taskId != policy.state.value.taskId && name in io.github.lejw0925.virtualscreen.phone.PhoneSession.TASK_BOUND_TOOLS) {
             return OperationEnvelope.failure("PHONE_TASK_CHANGED", result.sessionId).copy(values = result.values + mapOf(
                 "task_id" to taskId, "execution_status" to "unknown", "effect_status" to "unconfirmed",
                 "requires_observation" to true, "retry_automatically" to false))
@@ -487,7 +505,7 @@ class McpToolRegistry(private val sessions: VirtualScreenSessionManager,
                 e.ok -> l.text("操作完成","Operation completed","操作完成")
                 else -> localizedError(l,e.code ?: "BACKEND_OPERATION_FAILED")
             })
-            if (e.code in setOf("MAIN_SCREEN_BORROW_PENDING", "MAIN_SCREEN_COUNTDOWN")) {
+            if (e.code in setOf("MAIN_SCREEN_BORROW_PENDING", "MAIN_SCREEN_REQUEST_PENDING", "MAIN_SCREEN_COUNTDOWN")) {
                 data.put("recovery_tools", JSONArray(listOf("phone_get_status"))).put("retry_automatically", false)
             } else if (e.values["main_screen_allowed"] == true && e.code in setOf("STALE_OBSERVATION", "OBSERVATION_REQUIRED", "MAIN_SCREEN_MODE_ACTIVE")) {
                 data.put("requires_observation", true).put("recovery_tools", JSONArray(listOf("main_screen_observe")))

@@ -1,9 +1,13 @@
 package io.github.lejw0925.virtualscreen.app
 
+import io.github.lejw0925.virtualscreen.phone.HostCapabilities
+import io.github.lejw0925.virtualscreen.phone.ExpressionCatalog
+
 /** Public UI contract. All state is observational; only AvsrActions may change it. */
 data class AvsrAppState(
     val auth: AuthState = AuthState(),
     val connection: String = "disconnected",
+    val hostCapabilities: HostCapabilities = HostCapabilities(),
     val mode: String = "background",
     val borrowTimeoutSeconds: Int = 30,
     val pendingInputGrant: String? = null,
@@ -22,8 +26,8 @@ data class AvsrAppState(
     val avatarSets: List<AvatarSet> = emptyList(),
     val selectedAvatarSet: String = "",
     val personaId: String = "",
-    val speechEmotions: List<String> = emptyList(),
     val avatarProfiles: Map<String, PersonaAvatarProfile> = emptyMap(),
+    val editableAvatarPersonaIds: List<String> = emptyList(),
     /** auto | voice | text_only; sent with every input as phone_reply_preference. */
     val replyPreference: String = "auto",
     /** Name of the persona the host is running, sent by the host; blank on hosts that do not send it. */
@@ -38,16 +42,18 @@ data class AuthState(val phase: String = "signed_out", val host: String = "", va
     val reason: String = "", val retryable: Boolean = false)
 data class PermissionState(val paired: Boolean = false, val privilegeReady: Boolean = false,
     val privilegeStatus: String = "idle", val accessibility: Boolean = false, val overlay: Boolean = false,
-    val microphone: Boolean = false, val notifications: Boolean = false, val bootRecovery: Boolean = false)
+    val microphone: Boolean = false, val notifications: Boolean = false, val bootRecovery: Boolean = false,
+    val accessibilityAuthorized: Boolean = false)
 data class TaskState(val id: String = "", val inputId: String = "", val phase: String = "idle",
     val display: String = "virtual_screen", val appName: String = "", val step: String = "",
     val failureCategory: String = "", val reason: String = "", val result: String = "",
     val decision: String = "none", val deadlineMs: Long = 0, val countdownSeconds: Int = 0,
     val restoreStatus: String = "", val retryUsed: Boolean = false,
-    val handoffReason: String = "", val handoffSessionId: String? = null, val handoffId: String? = null)
+    val handoffReason: String = "", val handoffSessionId: String? = null, val handoffId: String? = null,
+    val borrowRequestSource: String = "", val borrowRequestReason: String = "")
 data class ConversationItem(val id: String, val role: String, val text: String,
     val timestampMs: Long, val delivery: String, val audioStatus: String,
-    val speechEmotion: String = "neutral", val voiceInput: Boolean = false, val canReplay: Boolean = false,
+    val speechEmotion: String = "", val voiceInput: Boolean = false, val canReplay: Boolean = false,
     val transcriptStatus: String = "", val transcriptReason: String = "", val personaId: String = "")
 /** personas: persona names this set belongs to; a host persona with no matching set shows the default mark. */
 data class AvatarSet(val id: String, val name: String, val images: Map<String, String>, val source: String,
@@ -58,7 +64,7 @@ data class AvatarSlot(val id: String, val name: String, val emotions: List<Strin
 data class PersonaAvatarProfile(val personaId: String, val baseSetId: String = "",
     val slots: List<AvatarSlot> = emptyList(), val defaultImageUri: String? = null,
     val images: Map<String, String> = emptyMap(), val hasOverride: Boolean = false,
-    val hasCustomDefaultImage: Boolean = false)
+    val hasCustomDefaultImage: Boolean = false, val expressionCatalog: ExpressionCatalog? = null)
 
 data class NativeConfirmationState(val kind: String = "alarm", val taskId: String = "", val executionId: String = "",
     val requestId: String = "", val phase: String = "pending", val hour: Int = 0, val minute: Int = 0,
@@ -107,6 +113,7 @@ interface AvsrActions {
     fun pickAvatarDefaultImage(personaId: String)
     fun restoreAvatarDefaultImage(personaId: String)
     fun resetAvatarProfile(personaId: String)
+    fun deleteAvatarProfile(personaId: String)
     fun setReplyPreference(value: String)
     fun setHandsFree(enabled: Boolean) {}
     fun refresh()

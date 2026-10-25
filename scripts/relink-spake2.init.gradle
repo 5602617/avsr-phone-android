@@ -1,0 +1,50 @@
+// shealive optional LGPLv3 relinking helper, 2026-10-25.
+// Only active with: -I scripts/relink-spake2.init.gradle -PrelinkSpake2Aar=...
+// Original library: MuntashirAkon/spake2-java tag 2.2.1 (see docs/RELINKING.md).
+gradle.beforeProject { project ->
+    if (project.path == ':app') {
+        project.plugins.withId('com.android.application') {
+            def supplied = project.findProperty('relinkSpake2Aar')
+            if (!supplied) {
+                throw new GradleException('Pass -PrelinkSpake2Aar=/path/to/rebuilt-spake2.aar')
+            }
+            def replacement = project.rootProject.file(supplied.toString()).canonicalFile
+            if (!replacement.isFile() || !replacement.name.endsWith('.aar')) {
+                throw new GradleException("Replacement AAR does not exist: ${replacement}")
+            }
+            project.configurations.configureEach {
+                exclude(group: 'com.github.MuntashirAkon.spake2-java', module: 'spake2-android')
+            }
+            project.dependencies.add('implementation', project.files(replacement))
+            project.tasks.register('verifySpake2Replacement') {
+                group = 'verification'
+                description = 'Resolve debug dependencies and confirm the explicit replacement AAR.'
+                doLast {
+                    def runtime = project.configurations.getByName('debugRuntimeClasspath')
+                    def original = runtime.incoming.resolutionResult.allComponents.find {
+                        it.moduleVersion?.group == 'com.github.MuntashirAkon.spake2-java' &&
+                                it.moduleVersion?.name == 'spake2-android'
+                    }
+                    if (original != null) {
+                        throw new GradleException('Original spake2 module is still resolved')
+                    }
+                    def localAar = runtime.allDependencies.withType(
+                            org.gradle.api.artifacts.FileCollectionDependency).any {
+                        it.files.files.any { file -> file.canonicalFile == replacement }
+                    }
+                    if (!localAar) {
+                        throw new GradleException('Replacement AAR is not on the runtime classpath')
+                    }
+                    def digest = java.security.MessageDigest.getInstance('SHA-256')
+                    replacement.withInputStream { stream ->
+                        byte[] buffer = new byte[65536]
+                        int count
+                        while ((count = stream.read(buffer)) != -1) digest.update(buffer, 0, count)
+                    }
+                    logger.lifecycle("SPAKE2_REPLACEMENT resolved local AAR; original module excluded; sha256=${digest.digest().encodeHex()}")
+                    logger.lifecycle('This verifies the resolved module graph and configured local AAR, not artifact transforms, an APK rebuild or device execution.')
+                }
+            }
+        }
+    }
+}

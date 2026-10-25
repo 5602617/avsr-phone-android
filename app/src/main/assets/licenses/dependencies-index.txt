@@ -1,0 +1,110 @@
+Dependency source/license index — checked 2026-10-25
+Scope: app/build.gradle.kts direct implementation dependencies. Versions are declared inputs, not a complete transitive SBOM. Build/test-only dependencies are not listed as APK runtime components.
+This index records upstream terms; it does not replace the application's existing PolyForm notice. This distribution uses libadb-android under its Apache-2.0 option; its independent SPAKE2 dependency retains LGPL-3.0.
+Apache-2.0 text is retained in AndroidX.txt and also applies to the other Apache-2.0 rows below.
+
+com.github.MuntashirAkon:libadb-android:3.1.1
+  Upstream license: GPL-3.0-or-later OR Apache-2.0 (upstream dual-license; other portions per LICENSES)
+  Selected license for libadb in this distribution: Apache-2.0.
+  Source/license: https://github.com/MuntashirAkon/libadb-android/blob/3.1.1/COPYING
+  Bundled text: libadb-COPYING.txt; AndroidX.txt
+
+org.conscrypt:conscrypt-android:2.5.3
+  Upstream license: Apache-2.0; upstream NOTICE retained
+  Source/license: https://github.com/google/conscrypt/tree/2.5.3
+  Bundled text: AndroidX.txt; Conscrypt-NOTICE.txt
+
+org.bouncycastle:bcpkix-jdk15to18:1.81
+  Upstream license: Bouncy Castle License (MIT-style)
+  Source/license: https://github.com/bcgit/bc-java/blob/r1rv81/LICENSE.html
+  Bundled text: BouncyCastle.txt
+
+androidx.activity:activity-compose:1.13.0
+  Upstream license: Apache-2.0
+  Source/license: https://cs.android.com/androidx/platform/frameworks/support
+  Bundled text: AndroidX.txt
+
+androidx.lifecycle:lifecycle-runtime-compose:2.11.0
+  Upstream license: Apache-2.0
+  Source/license: https://cs.android.com/androidx/platform/frameworks/support
+  Bundled text: AndroidX.txt
+
+androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0
+  Upstream license: Apache-2.0
+  Source/license: https://cs.android.com/androidx/platform/frameworks/support
+  Bundled text: AndroidX.txt
+
+org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0
+  Upstream license: Apache-2.0
+  Source/license: https://github.com/Kotlin/kotlinx.coroutines/blob/master/LICENSE.txt
+  Bundled text: AndroidX.txt
+
+com.github.roro2239:Stellar-API:1.0.3
+  Upstream license: MPL-2.0 modifications; Apache-2.0 original Shizuku portions (upstream README)
+  Source/license: https://github.com/roro2239/Stellar-API#readme
+  Bundled text: Stellar.txt; AndroidX.txt
+
+org.lsposed.hiddenapibypass:hiddenapibypass:6.1
+  Upstream license: Apache-2.0
+  Source/license: https://github.com/LSPosed/AndroidHiddenApiBypass/blob/main/LICENSE
+  Bundled text: AndroidX.txt
+
+dev.rikka.shizuku:api:13.1.5
+  Upstream license: MIT
+  Source/license: https://github.com/RikkaApps/Shizuku-API/blob/master/LICENSE
+  Bundled text: Shizuku-API.txt
+
+dev.rikka.shizuku:provider:13.1.5
+  Upstream license: MIT
+  Source/license: https://github.com/RikkaApps/Shizuku-API/blob/master/LICENSE
+  Bundled text: Shizuku-API.txt
+
+io.ktor:ktor-server-cio-jvm:3.3.3
+  Upstream license: Apache-2.0
+  Source/license: https://github.com/ktorio/ktor/blob/main/LICENSE
+  Bundled text: AndroidX.txt
+
+io.ktor:ktor-server-core-jvm:3.3.3
+  Upstream license: Apache-2.0
+  Source/license: https://github.com/ktorio/ktor/blob/main/LICENSE
+  Bundled text: AndroidX.txt
+
+com.squareup.okhttp3:okhttp:5.5.0
+  Upstream license: Apache-2.0
+  Source/license: https://github.com/lysine-dev/okhttp/blob/main/LICENSE.txt
+  Bundled text: AndroidX.txt
+
+org.tomlj:tomlj:1.1.1
+  Upstream license: Apache-2.0
+  Source/license: https://github.com/tomlj/tomlj/blob/main/LICENSE
+  Bundled text: AndroidX.txt
+
+androidx.compose.material3:material3:1.5.0-alpha29
+  Upstream license: Apache-2.0
+  Source/license: https://cs.android.com/androidx/platform/frameworks/support
+  Bundled text: AndroidX.txt
+
+androidx.compose.material:material-icons-extended:1.7.6
+  Upstream license: Apache-2.0
+  Source/license: https://cs.android.com/androidx/platform/frameworks/support
+  Bundled text: AndroidX.txt
+
+Known packaged transitive component:
+com.github.MuntashirAkon.spake2-java:spake2-android:2.2.1
+  Introduced by libadb-android 3.1.1; libspake2.so is included for the packaged ABIs.
+  License: LGPL-3.0 (upstream README/LICENSE and artifact POM).
+  Source: https://github.com/MuntashirAkon/spake2-java/tree/7615ddd680b990e14513ebb66eac4cb0dbf82464
+  C submodule: https://github.com/MuntashirAkon/spake2-c/tree/0d15933e5ba3e662cb01245a7ac0dc9fca3eac31
+  Bundled text: spake2-LGPL-3.0.txt; GPL-3.0.txt; spake2-SOURCE.txt.
+  Recombination path: docs/RELINKING.md and scripts/relink-spake2.init.gradle in the matching application source distribution. Include corresponding source/build materials with binary releases.
+
+Vendored source:
+roro/stellar/userservice files retain their original source/version and MPL-2.0 headers.
+Source: https://github.com/roro2239/Stellar-API (userservice module, v1.0.3)
+Bundled text: Stellar.txt; original Apache-2.0 portions remain under their upstream terms.
+
+Native tunnels, ETA and historical miuix:
+See frp.txt, cloudflared.txt, ETA.txt and miuix.txt, plus native-build.json and THIRD_PARTY_NOTICES.md. Existing notices are retained.
+
+Fonts:
+See fonts-OFL.txt for ZCOOL XiaoWei, Quicksand and Resource Han Rounded.

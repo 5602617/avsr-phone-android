@@ -13,3 +13,33 @@ __pycache__/
 dist/
 *.idsig
 *.lineage
+# Local Android/IDE configuration and signing material
+local.properties
+keystore.properties
+*.jks
+*.keystore
+*.p12
+*.key
+# Generated, device-specific, or private media
+device-fixture/build/
+device-fixture/**/build/
+*.apk
+*.aab
+*.dex
+*.hprof
+*.so
+# Unreviewed captures and avatar sets; reviewed source media elsewhere stays eligible.
+**/screenshots/
+**/avatars/
+app/src/main/assets/avatar_sets/
+docs/**/*.png
+docs/**/*.jpg
+docs/**/*.jpeg
+docs/**/*.webp
+# Public screenshots are reviewed individually before entering this directory.
+!docs/assets/**/*.png
+!docs/assets/**/*.jpg
+!docs/assets/**/*.jpeg
+!docs/assets/**/*.webp
+# Preserve the required Gradle wrapper.
+!gradle/wrapper/gradle-wrapper.jar

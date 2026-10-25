@@ -1,35 +1,27 @@
-# Repository Guidelines
+# Contributor and agent guidance
 
-## Project Structure & Module Organization
+This repository is the **shealive Android phone client**, paired with the [AstrBot phone plugin](https://github.com/5602617/astrbot_plugin_avsr_phone). Start with [CONTRIBUTING](CONTRIBUTING.md), [BUILD](docs/BUILD.md) and the [documentation index](docs/README.md). This is an existing Git repository; inspect current changes before editing and preserve unrelated work.
 
-- `app/` is the Android application. Kotlin sources under `app/src/main/kotlin/io/github/lejw0925/virtualscreen/` are grouped into `backend/`, `core/`, `mcp/`, `tunnel/`, and Compose `ui/`.
-- `app/src/main/res/` contains resources and English, Simplified Chinese, and Traditional Chinese strings. `assets/` holds licenses and native provenance; `jniLibs/` contains bundled tunnel executables.
-- `app/src/test/` holds JVM tests; `app/src/androidTest/` holds device tests; `app/src/debug/` contains debug-only diagnostics.
-- `device-fixture/` provides a disposable test application. `scripts/` contains native build and MCP verification tools; `docs/` documents setup and validation; `dist/` contains delivery APKs and checksums.
+## Source layout
 
-## Build, Test, and Development Commands
+Kotlin sources are under `app/src/main/kotlin/io/github/lejw0925/virtualscreen/`:
 
-Use JDK 25 and Android SDK 37; the minimum device version is Android 13. Configure the SDK in `local.properties` or `ANDROID_HOME`.
+- `app/` and `phone/`: application state, persona pictures and host connection/interaction.
+- `ui/`: Compose onboarding, chat, settings, floating panel, preview and human handoff.
+- `core/`, `backend/`, `mcp/`, `tunnel/`: device sessions, privileged execution, MCP and networking.
 
-- `./gradlew :app:assembleDebug` — build `app/build/outputs/apk/debug/app-debug.apk`.
-- `./gradlew :app:installDebug` — install on a connected device.
-- `./gradlew :app:testDebugUnitTest :app:lintDebug` — run JVM tests and Android Lint.
-- `./gradlew :device-fixture:assembleDebug :app:assembleDebugAndroidTest` — build the fixture and instrumentation APKs.
-- `./gradlew :app:assembleRelease` — build release; unsigned unless signing is configured.
-- `./scripts/build-tunnels.sh` — rebuild bundled frpc/cloudflared; requires NDK 28.2.13676358 and Go 1.25.6. See `docs/BUILD.md`.
+Resources are in `app/src/main/res/`; JVM and device tests are in `app/src/test/` and `app/src/androidTest/`. `device-fixture/` is a disposable test app. `scripts/` contains native-build and diagnostic tools. The retained Kotlin namespace is an upstream source identity; the release application ID is `dev.avsr.phone`. Do not rename either as a branding cleanup.
 
-## Coding Style & Naming Conventions
+## Changes and verification
 
-Follow official Kotlin style with four-space indentation. Use PascalCase for classes/files and composables, camelCase for functions/properties, and snake_case for Android resources. Keep packages aligned with their responsibilities. Update all three locales for user-facing text. Android Lint is configured; no dedicated formatter is configured.
+Follow existing Kotlin style and package responsibilities. Update English, Simplified Chinese and Traditional Chinese UI together. Keep the README's user instructions aligned with actual UI labels.
 
-## Testing Guidelines
+Use JDK 25 and the Android SDK versions specified in BUILD. Prepare native inputs through that guide before treating an APK as complete. Typical commands are `bash ./gradlew :app:assembleDebug`, `bash ./gradlew :app:testDebugUnitTest` and `bash ./gradlew :app:lintDebug` (`gradlew.bat` on Windows). Select checks relevant to the change and report what ran, including device/backend and any untested scope. Documentation-only changes need link and content checks, not device operations. Do not install apps, change device settings or operate connected services as an incidental check.
 
-JVM tests use JUnit 4, Robolectric, coroutine test utilities, and Ktor test hosting. Device tests use AndroidJUnit4. Name classes `<Feature>Test` and methods with descriptive camelCase behavior names. No numeric coverage threshold is configured. Cover changed lease, observation, cancellation, authentication, and display behavior. Follow `docs/BUILD.md` and `docs/VALIDATION.md` for device authorization, fixture installation, and instrumentation/MCP checks; record device/backend details and skips.
+The plugin's [docs/protocol](https://github.com/5602617/astrbot_plugin_avsr_phone/tree/main/docs/protocol) owns the client–host contract. Coordinate protocol changes with that repository; retain feature negotiation and explicit phone consent. A negotiated capability is not permission for an action. Preserve display scoping, control leases, cancellation, handoff and phone approval paths. Main-screen operations must follow the existing consent flow.
 
-## Commit & Pull Request Guidelines
+## Contributions and sensitive material
 
-Git history is unavailable in this checkout. Use focused, imperative subjects, for example `Fix stale observation rejection`. PRs should explain behavior changes, link relevant issues, list validation and tested devices/backends, and include screenshots for UI changes.
+Keep commits focused and describe user-visible behavior, relevant checks and limitations. Preserve existing staged changes and unrelated edits. Do not commit keystores, credentials, pairing material, SDK paths, databases, user pictures/chats, unreviewed screenshots or runtime logs. Release signing uses the `AVS_*` environment variables documented in BUILD.
 
-## Security & Configuration
-
-Keep credentials and keystores out of commits; use `AVS_*` environment variables for release signing. Preserve virtual-display-only input, authentication, leases, and phone-side restart approval. Do not rename or strip bundled `libfrpc.so`/`libcloudflared.so`; retain provenance and third-party notices.
+Preserve LICENSE, third-party notices and provenance. Native `libfrpc.so` and `libcloudflared.so` are executable programs; keep the required names and packaging behavior. See [UPSTREAM](docs/UPSTREAM.md) before changing inherited code or attribution. Refer to [SECURITY](SECURITY.md) for vulnerability reporting.

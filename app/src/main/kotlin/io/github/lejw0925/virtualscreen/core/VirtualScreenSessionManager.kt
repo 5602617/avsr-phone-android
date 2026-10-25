@@ -169,11 +169,15 @@ class VirtualScreenSessionManager(
             throw failure
         }
     }
-    suspend fun ensureAccessibility(): BackendCapabilities = mutex.withLock {
+    suspend fun ensureAccessibility(requireExistingGrant: Boolean = false): BackendCapabilities = mutex.withLock {
         val selected = backend()
         var caps = selected.probe()
+        // Background recovery may restore a binding, but must not grant access
+        // when the user has not enabled (or has since disabled) this service.
+        if (requireExistingGrant && !isAccessibilityServiceEnabled(context)) return@withLock caps
         if (selected is RootBackend || selected is ShizukuBackend) {
             accessibilityActivation.ensure(state.value.backend, caps.displayCreation != CapabilityStatus.REQUIRES_AUTHORIZATION) { rebind ->
+                check(!requireExistingGrant || isAccessibilityServiceEnabled(context)) { "ACCESSIBILITY_AUTHORIZATION_FAILED" }
                 when (selected) {
                     is RootBackend -> selected.enableAccessibility(rebind)
                     is ShizukuBackend -> selected.enableAccessibility(rebind)
@@ -220,8 +224,12 @@ class VirtualScreenSessionManager(
         return result
     }
     @Synchronized internal fun touchLease(clientId: String, token: String): LeaseDecision = leases.touch(clientId, token).also { if (it is LeaseDecision.Granted) update { s -> s.copy(lease = it.lease) } }
-    @Synchronized fun releaseLease(clientId: String, token: String): LeaseDecision = leases.release(clientId, token).also {
-        if (it is LeaseDecision.Granted) { fence(); update { s -> s.copy(lease = null) } }
+    @Synchronized fun releaseLease(clientId: String, token: String, onReleased: (Lease) -> Unit = {}): LeaseDecision = leases.release(clientId, token).also {
+        if (it is LeaseDecision.Granted) {
+            // A synchronous successful-release observer runs before StateFlow sees the lost lease.
+            try { onReleased(it.lease) }
+            finally { fence(); update { s -> s.copy(lease = null) } }
+        }
     }
     @Synchronized fun beginPhoneGesture(): Lease {
         val held = leases.snapshot()

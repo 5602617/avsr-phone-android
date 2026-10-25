@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
+import io.github.lejw0925.virtualscreen.phone.ExpressionCatalog
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -16,8 +17,15 @@ import java.util.UUID
  * Paths are relative to the set, so a set is portable and cannot reference private app files. */
 class AvatarSets(private val context: Context) {
     private val prefs = context.getSharedPreferences("avsr_product", 0)
-    val emotions = listOf("neutral", "soft", "warm", "cheerful", "curious", "calm", "serious", "urgent",
-        "concise", "narrator", "pouty", "teasing", "tsundere", "sulky", "smug")
+    @Synchronized fun saveCatalog(catalog: ExpressionCatalog) {
+        val name = "expression_catalog_${key(catalog.personaId)}"
+        val encoded = catalog.toJson().toString()
+        if (prefs.getString(name, null) != encoded) prefs.edit().putString(name, encoded).apply()
+    }
+    private fun catalog(personaId: String): ExpressionCatalog? = runCatching {
+        prefs.getString("expression_catalog_${key(personaId)}", null)?.let { ExpressionCatalog.read(JSONObject(it)) }
+    }.getOrNull()
+
     @Synchronized fun read(): List<AvatarSet> {
         val bundled = context.assets.list("avatar_sets").orEmpty().mapNotNull { id ->
             runCatching { parse(id, context.assets.open("avatar_sets/$id/manifest.json").bufferedReader().use { it.readText() }, "asset") }.getOrNull()
@@ -81,7 +89,7 @@ class AvatarSets(private val context: Context) {
             ?: sets.firstOrNull { personaId in it.personaIds || personaId in it.personas }
     }
     private fun seededSlots(set: AvatarSet?): JSONArray {
-        val groups = set?.images.orEmpty().filterKeys { it != "neutral" && it in emotions }.entries.groupBy { it.value }
+        val groups = set?.images.orEmpty().filterKeys { it != "neutral" }.entries.groupBy { it.value }
         return JSONArray().apply { groups.values.forEach { entries ->
             val mapped = entries.map { it.key }
             val id = "base_" + MessageDigest.getInstance("SHA-256")
@@ -118,19 +126,21 @@ class AvatarSets(private val context: Context) {
     @Synchronized fun profile(personaId: String, sets: List<AvatarSet> = read()): PersonaAvatarProfile {
         val manifest = runCatching { load(personaId) }.getOrNull()
         val set = base(personaId, sets, manifest)
+        val catalog = catalog(personaId)
         val customDefault = localImage(personaId, manifest?.optString("default_image").orEmpty())
         val defaultImage = customDefault ?: set?.images?.get("neutral")
         val rows = manifest?.let(::slotRows) ?: slotRows(JSONObject().put("slots", seededSlots(set)))
         val slots = rows.map { row ->
             val custom = localImage(personaId, row.optString("image"))
             val original = strings(row.optJSONArray("source_emotions")).firstNotNullOfOrNull { set?.images?.get(it) }
-            AvatarSlot(row.optString("id"), row.optString("name"), strings(row.optJSONArray("emotions")).filter { it in emotions },
+            AvatarSlot(row.optString("id"), row.optString("name"), strings(row.optJSONArray("emotions")),
                 custom ?: original ?: defaultImage, custom != null)
         }
-        val images = emotions.mapNotNull { emotion ->
+        val images = catalog?.entries.orEmpty().mapNotNull { tag ->
+            val emotion = tag.id
             (slots.firstOrNull { emotion in it.emotions }?.imageUri ?: defaultImage)?.let { emotion to it }
         }.toMap()
-        return PersonaAvatarProfile(personaId, set?.id.orEmpty(), slots, defaultImage, images, manifest != null, customDefault != null)
+        return PersonaAvatarProfile(personaId, set?.id.orEmpty(), slots, defaultImage, images, manifest != null, customDefault != null, catalog)
     }
 
     @Synchronized fun selectForPersona(personaId: String, setId: String) {
@@ -140,13 +150,15 @@ class AvatarSets(private val context: Context) {
         save(personaId, manifest.put("base_set_id", setId))
         prefs.edit().putString("avatar_set_persona_${key(personaId)}", setId).apply()
     }
-    @Synchronized fun configuredPersonaIds(): List<String> = File(context.filesDir, "avatar_sets").listFiles().orEmpty()
+    @Synchronized fun configuredPersonaIds(): List<String> = (File(context.filesDir, "avatar_sets").listFiles().orEmpty()
         .filter { it.isDirectory }.mapNotNull { folder -> runCatching {
             val manifest = JSONObject(File(folder, "manifest.json").readText())
             val personaId = manifest.optString("persona_id")
             personaId.takeIf { it.isNotBlank() && manifest.optString("kind") == "persona_override"
                 && folder.name == "persona_${key(it)}" }
-        }.getOrNull() }.distinct()
+        }.getOrNull() } + prefs.all.filterKeys { it.startsWith("expression_catalog_") }.values.mapNotNull { value ->
+            runCatching { ExpressionCatalog.read(JSONObject(value as String))?.personaId }.getOrNull()
+        }).distinct()
     @Synchronized fun addSlot(personaId: String, name: String) {
         val manifest = editable(personaId)
         val rows = slotRows(manifest) + JSONObject().put("id", UUID.randomUUID().toString()).put("name", name)
@@ -164,7 +176,7 @@ class AvatarSets(private val context: Context) {
     }
     @Synchronized fun mapSlot(personaId: String, slotId: String, mapped: List<String>) {
         val manifest = editable(personaId)
-        val chosen = mapped.distinct().filter { it in emotions }
+        val chosen = mapped.distinct().filter(String::isNotBlank)
         slot(manifest, slotId)
         slotRows(manifest).forEach { row ->
             row.put("emotions", JSONArray(if (row.optString("id") == slotId) chosen
@@ -186,6 +198,17 @@ class AvatarSets(private val context: Context) {
     @Synchronized fun reset(personaId: String) {
         val file = File(directory(personaId), "manifest.json")
         if (file.exists() && !file.delete()) throw IllegalStateException("AVATAR_PROFILE_RESET_FAILED")
+    }
+
+    /** Removes only this phone's Persona override and cached metadata, never host state or shared sets. */
+    @Synchronized fun deleteProfile(personaId: String) {
+        val folder = directory(personaId).canonicalFile
+        val parent = File(context.filesDir, "avatar_sets").canonicalFile
+        check(folder.parentFile == parent && folder.name == "persona_${key(personaId)}") { "AVATAR_PROFILE_PATH_INVALID" }
+        // Imported image files stay on disk; only the local editor configuration is removed.
+        Files.deleteIfExists(File(folder, "manifest.json").toPath())
+        prefs.edit().remove("expression_catalog_${key(personaId)}")
+            .remove("avatar_set_persona_${key(personaId)}").apply()
     }
 
     /** Reads only the URI returned by the user's system picker; stores a fresh URI to refresh image caches. */

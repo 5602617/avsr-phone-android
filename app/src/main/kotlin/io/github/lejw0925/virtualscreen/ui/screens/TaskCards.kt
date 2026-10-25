@@ -89,9 +89,12 @@ internal fun BorrowCard(state: AvsrAppState, actions: AvsrActions, modifier: Mod
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(l.text("后台做不了，借你的屏幕一下？", "Can't do this in the background. Borrow your screen?", "背景做不了，借你的螢幕一下？"),
+                    Text(if (task.borrowRequestSource == "direct_request")
+                        l.text("借你的屏幕完成这件事？", "May I use your screen for this task?", "借你的螢幕完成這件事？")
+                    else l.text("后台做不了，借你的屏幕一下？", "Can't do this in the background. Borrow your screen?", "背景做不了，借你的螢幕一下？"),
                         style = if (compact) YaoType.bodyStrong else YaoType.section)
-                    val why = listOf(task.appName, task.reason).filter { it.isNotBlank() }.joinToString(" · ")
+                    val why = if (task.borrowRequestSource == "direct_request") task.borrowRequestReason
+                        else listOf(task.appName, task.reason).filter { it.isNotBlank() }.joinToString(" · ")
                     if (why.isNotBlank()) Text(why, style = YaoType.small, color = p.inkSoft, maxLines = 2)
                 }
                 Spacer(Modifier.width(12.dp))

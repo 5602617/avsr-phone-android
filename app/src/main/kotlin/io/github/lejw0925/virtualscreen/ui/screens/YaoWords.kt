@@ -3,40 +3,21 @@ package io.github.lejw0925.virtualscreen.ui.screens
 import io.github.lejw0925.virtualscreen.ui.UiLanguage
 import io.github.lejw0925.virtualscreen.ui.localizedError
 
-/** Display wording for contract states. Unknown values pass through, so new backend states stay visible. */
+/** Product wording for contract states; raw diagnostics remain in the underlying state. */
 internal object YaoWords {
     const val NAME_HANS = "望月遥"
 
     fun connection(l: UiLanguage, value: String) = when (value) {
         "ready" -> l.text("在线", "Online", "在線")
         "connecting", "tunnel_connecting", "starting_local_mcp" -> l.text("连接中", "Connecting", "連線中")
+        "tunnel_reconnecting" -> l.text("正在重新连接", "Reconnecting", "正在重新連線")
         "registering" -> l.text("正在注册工具", "Registering tools", "正在註冊工具")
         "auth_required" -> l.text("需要登录", "Sign-in needed", "需要登入")
-        "disconnected" -> l.text("未连接", "Offline", "未連線")
+        "", "disconnected" -> l.text("未连接", "Offline", "未連線")
         "connection_failed", "host_error", "mcp_unavailable" -> l.text("连接失败", "Connection failed", "連線失敗")
-        else -> value
+        else -> l.text("连接状态待确认", "Connection status unavailable", "連線狀態待確認")
     }
     fun connectionFailed(value: String) = value in setOf("connection_failed", "host_error", "mcp_unavailable")
-
-    /** Her existing speech tones, as the avatar editor names them. Unknown tones pass through. */
-    fun emotion(l: UiLanguage, value: String) = when (value) {
-        "neutral" -> l.text("平常", "Neutral", "平常")
-        "soft" -> l.text("轻柔", "Soft", "輕柔")
-        "warm" -> l.text("温暖", "Warm", "溫暖")
-        "cheerful" -> l.text("开心", "Cheerful", "開心")
-        "curious" -> l.text("好奇", "Curious", "好奇")
-        "calm" -> l.text("平静", "Calm", "平靜")
-        "serious" -> l.text("认真", "Serious", "認真")
-        "urgent" -> l.text("着急", "Urgent", "著急")
-        "concise" -> l.text("干脆", "Concise", "乾脆")
-        "narrator" -> l.text("讲述", "Narrating", "講述")
-        "pouty" -> l.text("嘟嘴", "Pouty", "嘟嘴")
-        "teasing" -> l.text("逗你", "Teasing", "逗你")
-        "tsundere" -> l.text("傲娇", "Tsundere", "傲嬌")
-        "sulky" -> l.text("闹别扭", "Sulky", "鬧彆扭")
-        "smug" -> l.text("得意", "Smug", "得意")
-        else -> value
-    }
 
     fun mode(l: UiLanguage, value: String) = when (value) {
         "global" -> l.text("全局", "Global", "全域")
@@ -53,14 +34,20 @@ internal object YaoWords {
 
     fun privilege(l: UiLanguage, value: String) = when (value) {
         "embedded_ready" -> l.text("内置特权服务已运行", "Built-in privileged service running", "內置特權服務已執行")
-        "pairing" -> l.text("等待你在通知里输入配对码", "Waiting for the pairing code in the notification", "等待你在通知裡輸入配對碼")
+        "embedded_ready_manual_wireless_after_reboot" -> l.text("内置服务已运行；手机重启后需手动打开无线调试", "Built-in service running; enable Wireless debugging manually after restarting the phone", "內建服務已執行；手機重新啟動後需手動開啟無線偵錯")
+        "pairing_notification_searching" -> l.text("正在查找配对窗口，请保持系统配对码页面打开", "Looking for the pairing dialog; keep the system pairing-code page open", "正在尋找配對視窗，請保持系統配對碼頁面開啟")
+        "pairing_notification_code_required" -> l.text("等待你在通知里输入配对码", "Waiting for the pairing code in the notification", "等待你在通知裡輸入配對碼")
+        "pairing_notification_stopped" -> l.text("配对引导已关闭，可点“开始配对”重新打开", "Pairing setup closed; tap Start pairing to reopen it", "配對引導已關閉，可點「開始配對」重新開啟")
+        "pairing" -> l.text("正在配对…", "Pairing…", "正在配對…")
         "pairing_required" -> l.text("需要先完成无线调试配对", "Wireless debugging pairing needed", "需要先完成無線偵錯配對")
         "paired_connecting", "restoring" -> l.text("已配对，正在连接…", "Paired, connecting…", "已配對，正在連線…")
         "starting_embedded_service" -> l.text("正在启动内置特权服务…", "Starting the built-in service…", "正在啟動內置特權服務…")
         "enable_wireless_debugging_manually" -> l.text("请在开发者选项里打开“无线调试”", "Turn on Wireless debugging in Developer options", "請在開發者選項裡開啟「無線偵錯」")
         "automatic_recovery_off" -> l.text("开机自动恢复已关闭", "Restore after restart is off", "開機自動恢復已關閉")
-        "idle" -> l.text("尚未开始", "Not started", "尚未開始")
-        else -> value
+        "", "idle" -> l.text("尚未开始", "Not started", "尚未開始")
+        else -> if (value.startsWith("manual_action_required:"))
+            error(l, value.removePrefix("manual_action_required:"))
+        else l.text("内置服务状态待确认", "Built-in service status unavailable", "內建服務狀態待確認")
     }
 
     fun taskPhase(l: UiLanguage, phase: String) = when (phase) {

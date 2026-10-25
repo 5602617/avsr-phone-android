@@ -1,6 +1,19 @@
 # 变更记录
 
-## 0.1.1 · 2026-10-20
+## shealive 0.1.0 · 首个公开版本
+
+[固定版本源码](https://github.com/5602617/avsr-phone-android/tree/v0.1.0) · [签名 APK](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0.apk) · [发行页与校验文件](https://github.com/5602617/avsr-phone-android/releases/tag/v0.1.0)
+
+- shealive Android 手机客户端：配套 AstrBot 插件登录、文字聊天、录音、语音回复与悬浮陪伴。
+- 加入首次设置引导，支持先聊天、稍后准备手机配对和权限。
+- 整合后台屏幕预览、主屏借用确认、用户接管、交还与停止。
+- 按人格管理图片槽与宿主表达标签，支持区域折叠和经确认移除本机头像栏。
+- 按功能协商聊天、语音与设备能力；修正主动释放控制权的结束状态。
+- 配套插件 0.1.0；已验证原生 AstrBot 4.29.3 组合，当前 AVSR 组合回归待完成。
+
+兼容与限制见 [0.1.0 说明](docs/RELEASE_NOTES_0.1.0.md)。以下为保留的上游版本记录，其验证结论对应当时的实现和环境。
+
+## 上游 0.1.1 · 2026-10-20
 
 ### 新增与修复
 
@@ -15,7 +28,7 @@
 - 模拟器（Android 14, Shizuku 后端）前台验证画中画双向行为、自动审批开/关两条路径（约 1 秒自动重启返回 `restarted=true`；关闭时阻塞等待通知、不强杀应用，接管后 `CONTROL_CHANGED` 收尾）及 MCP 重启后隧道自动拉起；MCP 设备检测 19/19 工具通过。
 - Stellar 路径未在真机回归。
 
-## 0.1.0 · 2026-10-20
+## 上游 0.1.0 · 2026-10-20
 
 ### 新增与修复
 
@@ -50,8 +63,8 @@
 
 - 增加会话错误清理、异步工具探测、公网持续健康检查及断线状态的回归测试；设备隧道用例覆盖后台 200 秒、同一地址及真实 MCP 认证。
 - JVM 测试 97 项通过；Lint 0 错误、63 项现有警告；Debug、unsigned Release、测试夹具与 instrumentation APK 构建通过。
-- Xiaomi 24129PN74C / Android 17 / HyperOS 4 / Root：实际检测 19/19 个 MCP 工具通过，真实公网 DNS 与隧道设备测试通过。详情见 [Android 17 与首页验证](docs/ANDROID17_FIX_VALIDATION.md) 和 [Cloudflare 1033 验证](docs/TUNNEL_1033_FIX_VALIDATION.md)。
-- 找到旧断线窗口对应的 HyperOS Greeze 冻结记录。测试手机通过系统界面将应用省电策略设为「无限制」，确认进入厂商冻结豁免名单；之后的切应用与后台静置验证未再冻结或断连。此项是**手机配置**，源码不会自动修改系统省电策略。证据和测试条件见 [后台断连验证](docs/TUNNEL_BACKGROUND_VALIDATION.md)。
+- Xiaomi 24129PN74C / Android 17 / HyperOS 4 / Root：实际检测 19/19 个 MCP 工具通过，真实公网 DNS 与隧道设备测试通过。详情见 Android 17 与首页验证（`ANDROID17_FIX_VALIDATION.md`）和 Cloudflare 1033 验证（`TUNNEL_1033_FIX_VALIDATION.md`）；这两份历史引用文档未随当前仓提供。
+- 找到旧断线窗口对应的 HyperOS Greeze 冻结记录。测试手机通过系统界面将应用省电策略设为「无限制」，确认进入厂商冻结豁免名单；之后的切应用与后台静置验证未再冻结或断连。此项是**手机配置**，源码不会自动修改系统省电策略。证据和测试条件见 后台断连验证（`TUNNEL_BACKGROUND_VALIDATION.md`，该历史引用文档未随当前仓提供）。
 - 不把上述结果扩展为所有 ROM、任意时长、断电深度 Doze 或系统强杀下均不会断线。
 
 本次同步源码、测试、验证文档和界面截图；安装包仍按现有构建与发布流程交付。

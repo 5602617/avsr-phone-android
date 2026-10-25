@@ -37,7 +37,7 @@ internal fun HomeScreen(state: AvsrAppState, actions: AvsrActions, onSettings: (
     val l = LocalLanguage.current
     val p = LocalYao.current
     val latestHer = state.conversation.lastOrNull { it.role == "assistant" }
-    val portrait = herPortrait(state, latestHer?.speechEmotion ?: "neutral")
+    val portrait = herPortrait(state, latestHer?.speechEmotion.orEmpty())
     Column(Modifier.fillMaxSize().background(p.paper)) {
         if (state.mainScreenIndicatorVisible && state.task.phase == "running_main") {
             val height = with(androidx.compose.ui.platform.LocalDensity.current) { state.mainScreenIndicatorHeightPx.toDp() }

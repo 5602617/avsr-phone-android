@@ -18,8 +18,8 @@ android {
         applicationId = "dev.avsr.phone"
         minSdk = 33
         targetSdk = 37
-        versionCode = 12
-        versionName = "0.2.0"
+        versionCode = 13
+        versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += setOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
@@ -37,7 +37,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
-            versionNameSuffix = "-avsr-p12.1"
+            versionNameSuffix = "-debug"
         }
         release {
             if (!releaseKeystore.isNullOrBlank()) signingConfig = signingConfigs.getByName("production")

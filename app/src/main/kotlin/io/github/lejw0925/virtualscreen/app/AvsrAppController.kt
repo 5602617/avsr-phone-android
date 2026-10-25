@@ -19,6 +19,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import io.github.lejw0925.virtualscreen.VirtualScreenApplication
 import io.github.lejw0925.virtualscreen.core.ScreenAccessibilityService
+import io.github.lejw0925.virtualscreen.core.isAccessibilityServiceEnabled
 import io.github.lejw0925.virtualscreen.core.failure
 import io.github.lejw0925.virtualscreen.core.runtime
 import io.github.lejw0925.virtualscreen.phone.PhoneAudio
@@ -98,10 +99,15 @@ class AvsrAppController(private val app: VirtualScreenApplication) : AvsrActions
         scope.launch { app.phoneConnection.messages.collect { rebuild() } }
         scope.launch { app.phoneConnection.taskResult.collect { rebuild() } }
         scope.launch { app.phoneConnection.state.collect { rebuild(); syncHandsFree() } }
+        scope.launch { app.phoneConnection.hostCapabilities.collect { rebuild() } }
         scope.launch { app.phoneConnection.audio.playbackActive.collect { syncHandsFree() } }
         scope.launch { appUiVisible.collect { syncHandsFree() } }
         scope.launch { app.phoneConnection.personaName.collect { rebuild() } }
         scope.launch { app.phoneConnection.personaId.collect { rebuild() } }
+        scope.launch { app.phoneConnection.expressionCatalogs.collect { catalogs ->
+            catalogs.values.forEach { avatars.saveCatalog(it) }
+            rebuild()
+        } }
         scope.launch { io.github.lejw0925.virtualscreen.systemtools.AlarmRequests.state.collect { requests ->
             requests.forEach { app.phoneConnection.publishNativeConfirmation(it) }
             rebuild()
@@ -117,6 +123,7 @@ class AvsrAppController(private val app: VirtualScreenApplication) : AvsrActions
         scope.launch { app.mcp.activity.collect { rebuild() } }
         scope.launch { app.wirelessAdb.state.collect { rebuild() } }
         scope.launch { EmbeddedPrivilege.state.collect { rebuild() } }
+        scope.launch { ScreenAccessibilityService.connected.collect { rebuild() } }
         rebuild()
     }
     fun attach(activity: Activity) { this.activity = WeakReference(activity); refresh() }
@@ -138,8 +145,9 @@ class AvsrAppController(private val app: VirtualScreenApplication) : AvsrActions
             message.audioStatus, message.speechEmotion, message.voiceInput, message.audio.any { it.complete && it.file.exists() },
             message.transcriptStatus, message.transcriptReason, message.personaId) }
         val permission = PermissionState(app.wirelessAdb.paired, EmbeddedPrivilege.isReady(), app.wirelessAdb.state.value,
-            ScreenAccessibilityService.current != null, Settings.canDrawOverlays(app), granted(Manifest.permission.RECORD_AUDIO),
-            granted(Manifest.permission.POST_NOTIFICATIONS), app.wirelessAdb.enabled)
+            ScreenAccessibilityService.connected.value, Settings.canDrawOverlays(app), granted(Manifest.permission.RECORD_AUDIO),
+            granted(Manifest.permission.POST_NOTIFICATIONS), app.wirelessAdb.enabled,
+            accessibilityAuthorized = isAccessibilityServiceEnabled(app))
         val sets = avatars.read()
         val personaId = app.phoneConnection.personaId.value
         val nativeConfirmations = io.github.lejw0925.virtualscreen.systemtools.AlarmRequests.state.value.filter {
@@ -151,18 +159,20 @@ class AvsrAppController(private val app: VirtualScreenApplication) : AvsrActions
             message = io.github.lejw0925.virtualscreen.systemtools.systemToolMessage(
                 io.github.lejw0925.virtualscreen.ui.uiLanguage(app.resources.configuration.locales[0]),
                 if (request.phase == "pending") "ALARM_PHONE_CONFIRMATION_REQUIRED" else "ALARM_DISPATCH_IN_PROGRESS").orEmpty()) }
-        val profiles = (conversation.map { it.personaId } + personaId + mutable.value.avatarProfiles.keys + avatars.configuredPersonaIds())
+        val configuredPersonas = avatars.configuredPersonaIds()
+        val profiles = (conversation.map { it.personaId } + personaId + configuredPersonas)
             .filter(String::isNotBlank).distinct()
             .associateWith { avatars.profile(it, sets) }
         val authenticated = app.phoneConnection.savedToken().isNotBlank()
         val setup = when {
             !authenticated -> "login"
             !permission.paired || !permission.privilegeReady -> "pairing"
-            !permission.accessibility || !permission.overlay || !permission.microphone -> "permissions"
+            !permission.accessibilityAuthorized || !permission.overlay || !permission.microphone -> "permissions"
             !prefs.getBoolean("onboarding_complete", false) -> "mode"
             else -> "complete"
         }
         mutable.update { it.copy(auth = login.state.value, connection = app.phoneConnection.state.value,
+            hostCapabilities = app.phoneConnection.hostCapabilities.value,
             mode = usage.mode, borrowTimeoutSeconds = usage.borrowTimeoutSeconds, pendingInputGrant = usage.pendingInputGrant,
             permissions = permission, onboardingStep = setup, onboardingComplete = setup == "complete",
             task = TaskState(usage.taskId.orEmpty(), usage.inputId.orEmpty(), usage.phase,
@@ -171,14 +181,16 @@ class AvsrAppController(private val app: VirtualScreenApplication) : AvsrActions
                 result = app.phoneConnection.taskResult.value.takeIf { result -> result.first == usage.taskId }?.second.orEmpty(),
                 decision = usage.decision, deadlineMs = usage.deadlineMs ?: 0L, countdownSeconds = usage.countdownSeconds,
                 restoreStatus = usage.restoreStatus, retryUsed = usage.retryUsed,
-                handoffReason = usage.handoffReason, handoffSessionId = usage.handoffSessionId, handoffId = usage.handoffId),
+                handoffReason = usage.handoffReason, handoffSessionId = usage.handoffSessionId, handoffId = usage.handoffId,
+                borrowRequestSource = usage.borrowRequestSource.orEmpty(), borrowRequestReason = usage.borrowRequestReason.orEmpty()),
             conversation = conversation, voice = if (recorder != null) "listening" else if (conversation.any { it.audioStatus == "playing" }) "speaking" else "idle",
             overlayEnabled = prefs.getBoolean("overlay_enabled", false),
             mainScreenIndicatorVisible = app.mainScreen.indicatorVisible.value,
             mainScreenIndicatorHeightPx = app.mainScreen.indicatorHeight.value,
             nativeConfirmations = nativeConfirmations,
             avatarSets = sets, selectedAvatarSet = profiles[personaId]?.baseSetId ?: avatars.selected(sets),
-            personaId = personaId, speechEmotions = avatars.emotions, avatarProfiles = profiles,
+            personaId = personaId, avatarProfiles = profiles,
+            editableAvatarPersonaIds = (listOf(personaId) + configuredPersonas).filter(String::isNotBlank).distinct(),
             replyPreference = prefs.getString("reply_preference", "auto") ?: "auto",
             personaName = app.phoneConnection.personaName.value,
             handsFree = handsFreeEnabled, handsFreeAvailable = true) }
@@ -366,7 +378,7 @@ class AvsrAppController(private val app: VirtualScreenApplication) : AvsrActions
     override fun restorePrivilege() { app.wirelessAdb.startPaired() }
     override fun completeOnboarding() = action {
         val p = state.value.permissions
-        check(app.phoneConnection.savedToken().isNotBlank() && p.paired && p.privilegeReady && p.accessibility && p.overlay && p.microphone) { "SETUP_INCOMPLETE" }
+        check(app.phoneConnection.savedToken().isNotBlank() && p.paired && p.privilegeReady && p.accessibilityAuthorized && p.overlay && p.microphone) { "SETUP_INCOMPLETE" }
         prefs.edit().putBoolean("onboarding_complete", true).apply()
     }
     override fun playVoice(messageId: String) = action { app.phoneConnection.messages.value.firstOrNull { it.id == messageId }?.let { app.phoneConnection.audio.replay(it.id, it.audio) } }
@@ -383,6 +395,10 @@ class AvsrAppController(private val app: VirtualScreenApplication) : AvsrActions
     override fun restoreAvatarSlotImage(personaId: String, slotId: String) = action { avatars.restoreImage(personaId, slotId) }
     override fun restoreAvatarDefaultImage(personaId: String) = action { avatars.restoreImage(personaId, null) }
     override fun resetAvatarProfile(personaId: String) = action { avatars.reset(personaId) }
+    override fun deleteAvatarProfile(personaId: String) = action {
+        avatars.deleteProfile(personaId)
+        app.phoneConnection.forgetExpressionCatalog(personaId)
+    }
     override fun pickAvatarSlotImage(personaId: String, slotId: String) = pickAvatarImage(personaId, slotId)
     override fun pickAvatarDefaultImage(personaId: String) = pickAvatarImage(personaId, null)
     private fun pickAvatarImage(personaId: String, slotId: String?) = action {

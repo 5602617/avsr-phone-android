@@ -131,6 +131,9 @@ class VirtualScreenForegroundService : Service() {
             combine(app.sessions.state, app.mcp.flow, app.mcpChanging, app.tunnels.flow, app.runtimeTasks) { screen, server, changing, tunnel, tasks ->
                 Triple(screen.displayId, screen.status == SessionStatus.STARTING,
                     app.mcpWanted || server.running || changing || tunnel.running || tunnel.phase == "login" || tasks > 0)
+            }.combine(app.phoneConnection.state) { runtime, connection ->
+                runtime.copy(third = runtime.third || connection in setOf("connecting", "ready", "starting_local_mcp",
+                    "tunnel_connecting", "tunnel_reconnecting", "registering", "mcp_unavailable"))
             }.distinctUntilChanged().collectLatest { (display, starting, keepAlive) ->
                 if (display == null && !starting && !keepAlive) {
                     // A manual preview can be starting just after startForegroundService().

@@ -138,6 +138,21 @@ class MainScreenControl(private val app: VirtualScreenApplication) {
         if (leaseGeneration == null) { leaseGeneration = lease.lease.generation; leaseOwner = owner }
         check(leaseGeneration == lease.lease.generation && leaseOwner == owner) { "PHONE_TASK_LEASE_CHANGED" }
     }
+    /** Explicit release detaches the successful lease; expiry and disconnect keep the normal fence. */
+    suspend fun releaseControl(owner: String, token: String): LeaseDecision = withContext(Dispatchers.Main.immediate) {
+        var detached = false
+        val decision = app.sessions.releaseLease(owner, token) { released ->
+            // Inside the session lock: only field assignments, no calls, suspension, or reverse lock.
+            if (leaseOwner == released.owner && leaseGeneration == released.generation) {
+                leaseGeneration = null
+                leaseOwner = null
+                detached = true
+            }
+        }
+        // UI/grant cleanup happens after releaseLease has left its synchronized section.
+        if (detached) releaseGrant()
+        decision
+    }
     private fun openGrant() {
         val state = policy.state.value
         check(state.mainScreenAllowed) { if (state.phase == "countdown") "MAIN_SCREEN_COUNTDOWN" else "BACKGROUND_MAIN_SCREEN_NOT_ALLOWED" }

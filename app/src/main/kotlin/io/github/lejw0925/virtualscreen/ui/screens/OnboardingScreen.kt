@@ -125,9 +125,11 @@ internal fun PairingPanel(state: AvsrAppState, actions: AvsrActions) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         YaoCard {
             YaoPill(YaoWords.privilege(l, state.permissions.privilegeStatus), dot = true, strong = state.permissions.privilegeReady)
+            Text(l.text("首次启动也在手机上完成，不需要电脑、USB 或另装 Shizuku。", "First startup happens on this phone too. No computer, USB or separate Shizuku app is needed.", "首次啟動也在手機上完成，不需要電腦、USB 或另裝 Shizuku。"), style = YaoType.small, color = p.inkSoft)
             NumberedLine(1, l.text("在“关于手机”里连续点按版本号，打开开发者选项。", "In About phone, tap Build number repeatedly to enable Developer options.", "在「關於手機」裡連續點按版本號，開啟開發者選項。"))
-            NumberedLine(2, l.text("点下面的按钮，系统会打开无线调试；选“使用配对码配对设备”。", "Tap below; in Wireless debugging choose Pair device with pairing code.", "點下面的按鈕，系統會開啟無線偵錯；選「使用配對碼配對裝置」。"))
+            NumberedLine(2, l.text("手机连接 Wi-Fi，点下面的按钮进入开发者选项，开启“无线调试”并允许当前网络，再选“使用配对码配对设备”。", "Connect the phone to Wi-Fi. Tap below to open Developer options, enable Wireless debugging and allow the current network, then choose Pair device with pairing code.", "手機連接 Wi-Fi，點下面的按鈕進入開發者選項，開啟「無線偵錯」並允許目前網路，再選「使用配對碼配對裝置」。"))
             NumberedLine(3, l.text("保持那一页别关，下拉通知栏，在本应用的通知里填六位配对码。", "Keep that page open, pull down notifications and enter the six-digit code in this app's notification.", "保持那一頁別關，下拉通知欄，在本應用程式的通知裡填六位配對碼。"))
+            NumberedLine(4, l.text("配对后会自动连接无线 ADB 并启动内置服务。返回这里，看到“内置特权服务已运行”即已启动，无需再执行命令。", "Pairing automatically connects wireless ADB and starts the built-in service. Return here; Built-in privileged service running confirms startup. No extra command is needed.", "配對後會自動連接無線 ADB 並啟動內建服務。返回這裡，看到「內置特權服務已執行」即已啟動，無需再執行命令。"))
             YaoButton(l.text("开始配对", "Start pairing", "開始配對"), { actions.openPermission("pairing") }, Modifier.fillMaxWidth())
         }
         YaoSwitchRow(l.text("开机后自动恢复", "Restore after restart", "開機後自動恢復"),
@@ -181,8 +183,15 @@ internal fun PermissionPanel(state: AvsrAppState, actions: AvsrActions, includeO
     val ps = state.permissions
     val go = l.text("去开启", "Turn on", "去開啟")
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        YaoStatusRow(l.text("无障碍", "Accessibility", "無障礙"), l.text("让她读懂和操作虚拟屏上的界面", "Lets her read and operate the virtual screen", "讓她讀懂和操作虛擬螢幕上的介面"),
-            ps.accessibility, go.takeUnless { ps.accessibility }) { actions.openPermission("accessibility") }
+        YaoStatusRow(l.text("无障碍", "Accessibility", "無障礙"), when {
+            ps.accessibility -> l.text("已授权，服务已连接", "Authorized and connected", "已授權，服務已連線")
+            ps.accessibilityAuthorized -> l.text("系统授权仍在，服务尚未连接；无需重复授权", "Authorization is retained; the service is not connected yet. No new permission is needed", "系統授權仍在，服務尚未連線；無需重複授權")
+            else -> l.text("让她读懂和操作虚拟屏上的界面", "Lets her read and operate the virtual screen", "讓她讀懂和操作虛擬螢幕上的介面")
+        }, ps.accessibility, when {
+            ps.accessibility -> null
+            ps.accessibilityAuthorized -> l.text("查看设置", "View settings", "查看設定")
+            else -> go
+        }) { actions.openPermission("accessibility") }
         YaoStatusRow(l.text("悬浮窗", "Floating panel", "懸浮窗"), l.text("离开应用后也能看到她的回复", "See her replies after leaving the app", "離開應用程式後也能看到她的回覆"),
             ps.overlay, go.takeUnless { ps.overlay }) { actions.openPermission("overlay") }
         YaoStatusRow(l.text("麦克风", "Microphone", "麥克風"), l.text("按住说话", "Talk to her", "按住說話"),

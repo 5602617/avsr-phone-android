@@ -1,0 +1,26 @@
+SPAKE2 source and recombination information — 2026-10-25
+
+Component: com.github.MuntashirAkon.spake2-java:spake2-android:2.2.1
+Copyright 2021 Muntashir Al-Islam. License: LGPL-3.0.
+The independent libadb-android 3.1.1 dependency is used under Apache-2.0;
+that choice does not replace the SPAKE2 license.
+
+Parent source (tag 2.2.1):
+https://github.com/MuntashirAkon/spake2-java/tree/7615ddd680b990e14513ebb66eac4cb0dbf82464
+Required C submodule, android/src/main/cpp/spake2-c:
+https://github.com/MuntashirAkon/spake2-c/tree/0d15933e5ba3e662cb01245a7ac0dc9fca3eac31
+Both repositories retain their upstream license and copyright files.
+
+The corresponding shealive source distribution includes docs/RELINKING.md
+and scripts/relink-spake2.init.gradle. They describe rebuilding the complete
+Java/JNI AAR, explicitly replacing the transitive module for a build, rebuilding
+the APK, and signing/installing a user build. Library modifications retain
+their LGPL rights; the application's PolyForm notice does not relicense the
+library. Modification of LGPL portions and reverse engineering for debugging
+those modifications are not restricted by this project's terms.
+
+Full terms: spake2-LGPL-3.0.txt and GPL-3.0.txt in this directory.
+For each binary release, obtain the matching source revision and library source
+from that release's adjacent source download. The fixed upstream URLs above
+identify source versions; this notice is not a standalone written source offer
+or a claim that a modified replacement build has already been verified.

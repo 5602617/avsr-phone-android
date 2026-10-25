@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Persona</string>
+    <string name="app_name">shealive</string>
     <string name="accessibility_description">Observe and control nodes on your virtual screen. Enable only when using virtual screen automation.</string>
     <string name="notification_channel">Virtual screen</string>
     <string name="notification_running">Virtual screen service is active</string>

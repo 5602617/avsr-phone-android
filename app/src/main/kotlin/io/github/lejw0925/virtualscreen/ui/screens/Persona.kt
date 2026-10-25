@@ -17,13 +17,16 @@ internal fun herSet(state: AvsrAppState): AvatarSet? =
  * falls back to the persona's plain picture, so no second mapping lives here. Without a persona id
  * (old messages, older hosts) the legacy set rule applies; such a message is never given today's persona.
  */
-internal fun portraitFor(state: AvsrAppState, personaId: String, emotion: String = "neutral"): String? {
+internal fun portraitFor(state: AvsrAppState, personaId: String, emotion: String = ""): String? {
     val profile = personaId.takeIf { it.isNotBlank() }?.let { state.avatarProfiles[it] }
-    if (profile != null) return profile.images[emotion] ?: profile.images["neutral"] ?: profile.defaultImageUri
+    if (profile != null) {
+        val effective = emotion.ifBlank { profile.expressionCatalog?.defaultEmotion.orEmpty() }
+        return profile.images[effective] ?: profile.defaultImageUri
+    }
     return herSet(state)?.let { it.images[emotion] ?: it.images["neutral"] }
 }
 
-internal fun herPortrait(state: AvsrAppState, emotion: String = "neutral"): String? = portraitFor(state, state.personaId, emotion)
+internal fun herPortrait(state: AvsrAppState, emotion: String = ""): String? = portraitFor(state, state.personaId, emotion)
 
 internal fun herName(state: AvsrAppState): String =
     state.personaName.ifBlank { herSet(state)?.name.orEmpty() }.ifBlank { "Persona" }
@@ -31,5 +34,5 @@ internal fun herName(state: AvsrAppState): String =
 /** Her face follows the tone of her latest reply, worn by the persona who sent it. */
 internal fun herCurrentPortrait(state: AvsrAppState): String? {
     val latest = state.conversation.lastOrNull { it.role == "assistant" }
-    return portraitFor(state, latest?.personaId?.ifBlank { state.personaId } ?: state.personaId, latest?.speechEmotion ?: "neutral")
+    return portraitFor(state, latest?.personaId?.ifBlank { state.personaId } ?: state.personaId, latest?.speechEmotion.orEmpty())
 }

@@ -2,6 +2,7 @@ package io.github.lejw0925.virtualscreen.phone
 
 import io.github.lejw0925.virtualscreen.BuildConfig
 import io.github.lejw0925.virtualscreen.VirtualScreenApplication
+import io.github.lejw0925.virtualscreen.VirtualScreenForegroundService
 import io.github.lejw0925.virtualscreen.core.CredentialVault
 import io.github.lejw0925.virtualscreen.core.VirtualScreenSessionManager
 import io.github.lejw0925.virtualscreen.tunnel.FrpcConfig
@@ -16,13 +17,14 @@ import okhttp3.*
 import org.json.JSONObject
 import android.util.Base64
 import android.util.Log
+import android.content.Intent
 import java.io.File
 
 data class PhoneMessage(val id: String, val text: String, val incoming: Boolean,
     val replyTo: String? = null, val extras: String = "", val delivery: String = "received",
     val audio: List<PhoneAudioClip> = emptyList(), val voiceInput: Boolean = false,
     val audioStatus: String = "", val receivedMs: Double? = null,
-    val speechEmotion: String = "neutral", val timestampMs: Long = System.currentTimeMillis(),
+    val speechEmotion: String = "", val timestampMs: Long = System.currentTimeMillis(),
     val transcriptStatus: String = "", val transcriptReason: String = "", val personaId: String = "")
 
 data class PhoneAuthorizationRequest(val id: String, val question: String, val choices: List<String>,
@@ -38,10 +40,17 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
     val messages = mutableMessages.asStateFlow()
     private val mutableState = MutableStateFlow("disconnected")
     val state = mutableState.asStateFlow()
+    private val mutableHostCapabilities = MutableStateFlow(HostCapabilities())
+    val hostCapabilities = mutableHostCapabilities.asStateFlow()
     private val mutablePersonaName = MutableStateFlow("")
     val personaName = mutablePersonaName.asStateFlow()
     private val mutablePersonaId = MutableStateFlow("")
     val personaId = mutablePersonaId.asStateFlow()
+    private val mutableExpressionCatalogs = MutableStateFlow<Map<String, ExpressionCatalog>>(emptyMap())
+    val expressionCatalogs = mutableExpressionCatalogs.asStateFlow()
+    fun forgetExpressionCatalog(personaId: String) {
+        mutableExpressionCatalogs.update { it - personaId }
+    }
     private val mutableRegistrationReason = MutableStateFlow("")
     val registrationReason = mutableRegistrationReason.asStateFlow()
     private val mutableTaskResult = MutableStateFlow("" to "")
@@ -66,6 +75,9 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
     @Volatile private var connectionEpoch = 0L
     private var tunnelJob: Job? = null
     @Volatile private var resumeOnReady = false
+    @Volatile private var deviceTransportReady = false
+    private val chatAvailable get() = hostCapabilities.value.features.keys.any { it == "chat_text" || it == "audio_input" }
+    private fun devicePhase(phase: String) { mutableState.value = if (chatAvailable) "ready" else phase }
     val savedUrl get() = prefs.getString("url", "ws://10.0.2.2:12420/ws").orEmpty()
     val savedDevice get() = prefs.getString("device", "mumu-phone-0").orEmpty()
     fun hasSavedToken() = vault.contains("phone-host-token")
@@ -114,16 +126,9 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
                 withContext(NonCancellable) { previous?.join() }
                 ensureActive()
                 resumeOnReady = allowExecution // A new Task still needs its own binding and screen permission.
-                mutableState.value = "starting_local_mcp"
-                Log.i("PhoneConnection", "epoch=$epoch stage=local_mcp_start")
-                app.setMcpEnabled(true)
-                val localServer = withTimeout(60_000) {
-                    combine(app.mcp.flow, app.mcpChanging) { server, starting ->
-                        // A retry may still have the previous error until its startup coroutine runs.
-                        server.takeIf { it.running || (!starting && it.lastError != null) }
-                    }.filterNotNull().first()
-                }
-                check(localServer.running) { safeConnectionError(localServer.lastError, "LOCAL_MCP_START_FAILED") }
+                mutableState.value = "connecting"
+                // The existing service owns connection lifetime; this does not enable MCP.
+                app.startForegroundService(Intent(app, VirtualScreenForegroundService::class.java))
                 var attempt = 0
                 while(isActive) {
                     attempt++
@@ -179,7 +184,7 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
                         for(frame in frames) {
                             when (frame.optString("type")) {
                                 "ready" -> stage.set("device_register")
-                                "device.bound" -> stage.set("tunnel_start")
+                                "device.bound" -> stage.set("local_mcp_start")
                                 "device.registering" -> stage.set("mcp_register")
                                 "device.ready" -> stage.set("ready")
                                 "device.unavailable" -> stage.set("mcp_unavailable")
@@ -199,6 +204,8 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
                         val reconnectExecution = resumeOnReady || app.phoneSession.flow.value.executionEnabled
                         if(socket === ws) socket = null
                         if (connectionEpoch == epoch) {
+                            deviceTransportReady = false
+                            mutableHostCapabilities.value = HostCapabilities()
                             mutableAuthorizations.value = emptyList()
                             presentation.clearAuthorization()
                         }
@@ -227,8 +234,6 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
                     if (credentialRejected.get()) break
                     delay(3000)
                 }
-            } catch(_: TimeoutCancellationException) {
-                reportConnectionFailure(epoch, "LOCAL_MCP_START_TIMEOUT")
             } catch(c: CancellationException) { throw c }
               catch(failure: Exception) { reportConnectionFailure(epoch, safeConnectionError(failure.message, "PHONE_CONNECTION_FAILED")) }
         }
@@ -246,16 +251,44 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
     }
 
     private suspend fun handle(frame: JSONObject, deviceId: String, host: String) {
+        if (hostCapabilities.value.deviceControlUnavailable && frame.optString("type") in
+            setOf("device.bound", "device.ready", "device.registering", "device.unavailable")) return
         when(frame.optString("type")) {
             "ready" -> {
                 mutablePersonaId.value = frame.optString("persona_id", "")
                 mutablePersonaName.value = frame.optString("persona_name", "")
-                send(JSONObject().put("type", "client.capabilities").put("audio_stream", 1).put("voice_timing", 1))
+                send(PhoneCapabilities.clientFrame())
                 send(JSONObject().put("type", "device.register").put("device_protocol", 1).put("device_id", deviceId)
                 .put("apk", JSONObject().put("package_name", app.packageName).put("version_code", BuildConfig.VERSION_CODE))
                 .put("adapter", JSONObject().put("id", "virtual-screen-qqmusic").put("version", BuildConfig.VERSION_NAME)))
             }
+            "host.capabilities" -> {
+                val capabilities = PhoneCapabilities.readHost(frame) { name, version ->
+                    Log.i("PhoneCapabilities", "feature=$name version=$version unsupported")
+                }
+                if (capabilities != mutableHostCapabilities.value) {
+                    mutableHostCapabilities.value = capabilities
+                    Log.i("PhoneCapabilities", "connected features=${capabilities.features.keys.joinToString(",")}")
+                }
+                if (chatAvailable || capabilities.deviceControlUnavailable) {
+                    if (capabilities.deviceControlUnavailable) resumeOnReady = false
+                    mutableState.value = "ready"
+                    mutableRegistrationReason.value = ""
+                    Log.i("PhoneConnection", "stage=chat_ready device_pending=${!deviceTransportReady}")
+                }
+            }
+            "persona.identity" -> {
+                if (!hostCapabilities.value.avatarProfileAvailable) return
+                mutablePersonaId.value = frame.optString("persona_id", "")
+                mutablePersonaName.value = frame.optString("persona_name", "")
+                if ("expression_catalog" in hostCapabilities.value.features) {
+                    ExpressionCatalog.read(frame)?.let { catalog ->
+                        mutableExpressionCatalogs.update { it + (catalog.personaId to catalog) }
+                    }
+                }
+            }
             "device.bound" -> {
+                deviceTransportReady = false
                 mutableAuthorizations.value = emptyList()
                 presentation.clearAuthorization()
                 require(frame.getString("device_id") == deviceId) { "DEVICE_MISMATCH" }
@@ -265,20 +298,38 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
                 require(tunnel.getString("mode") == "frpc")
                 app.tunnelWanted = TunnelMode.OFF // Host connection owns restoration; never restore an unbound proxy.
                 tunnelJob?.cancelAndJoin()
-                app.tunnels.start(TunnelMode.FRPC, FrpcConfig(host, tunnel.getInt("port"), tunnel.getString("token"),
-                    "phone-$deviceId", remotePort = tunnel.getInt("remote_port")))
-                mutableState.value = "tunnel_connecting"
+                devicePhase("starting_local_mcp")
                 tunnelJob = scope.launch {
-                    var hadConnection = false
-                    app.tunnels.flow.map(PhoneTunnelStatus::from).distinctUntilChanged().collect { status ->
-                        mutableRegistrationReason.value = status.reason()
-                        mutableState.value = status.connectionPhase(hadConnection)
-                        if(status.connected) {
-                            hadConnection = true
-                            send(boundFrame("device.channel_ready"))
-                        } else if(hadConnection || status.failed) {
-                            pauseTransport("tunnel_lost")
+                    try {
+                        Log.i("PhoneConnection", "stage=local_mcp_start after=device_bound")
+                        app.setMcpEnabled(true)
+                        val localServer = withTimeout(60_000) {
+                            combine(app.mcp.flow, app.mcpChanging) { server, starting ->
+                                // A retry may still have the previous error until startup runs.
+                                server.takeIf { it.running || (!starting && it.lastError != null) }
+                            }.filterNotNull().first()
                         }
+                        check(localServer.running) { safeConnectionError(localServer.lastError, "LOCAL_MCP_START_FAILED") }
+                        app.tunnels.start(TunnelMode.FRPC, FrpcConfig(host, tunnel.getInt("port"), tunnel.getString("token"),
+                            "phone-$deviceId", remotePort = tunnel.getInt("remote_port")))
+                        devicePhase("tunnel_connecting")
+                        var hadConnection = false
+                        app.tunnels.flow.map(PhoneTunnelStatus::from).distinctUntilChanged().collect { status ->
+                            mutableRegistrationReason.value = status.reason()
+                            devicePhase(status.connectionPhase(hadConnection))
+                            if(status.connected) {
+                                hadConnection = true
+                                send(boundFrame("device.channel_ready"))
+                            } else if(hadConnection || status.failed) {
+                                deviceTransportReady = false
+                                pauseTransport("tunnel_lost")
+                            }
+                        }
+                    } catch (_: TimeoutCancellationException) {
+                        reportDeviceFailure("LOCAL_MCP_START_TIMEOUT")
+                    } catch (cancelled: CancellationException) { throw cancelled }
+                      catch (failure: Exception) {
+                        reportDeviceFailure(safeConnectionError(failure.message, "LOCAL_DEVICE_START_FAILED"))
                     }
                 }
             }
@@ -287,16 +338,19 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
                 // A probe started before tunnel loss cannot mark the broken transport ready again.
                 if (!PhoneTunnelStatus.from(app.tunnels.state()).connected) return
                 app.phoneSession.ready()
+                deviceTransportReady = true
+                Log.i("PhoneConnection", "stage=device_ready input_binding=enabled")
                 mutableState.value = "ready"
                 mutableRegistrationReason.value = ""
                 if(resumeOnReady) { resumeOnReady = false; resume() }
             }
-            "device.registering" -> mutableState.value = "registering"
+            "device.registering" -> devicePhase("registering")
             "device.unavailable" -> {
+                deviceTransportReady = false
                 pauseTransport("mcp_unavailable")
                 mutableRegistrationReason.value = frame.optString("reason", "mcp_unavailable")
-                mutableState.value = "mcp_unavailable"
-                if (frame.optBoolean("retryable", false)) error("HOST_MCP_RETRYABLE")
+                devicePhase("mcp_unavailable")
+                if (!chatAvailable && frame.optBoolean("retryable", false)) error("HOST_MCP_RETRYABLE")
             }
             "task.started" -> {
                 require(frame.getString("connection_id") == app.phoneSession.flow.value.connectionId) { "PHONE_CONNECTION_STALE" }
@@ -342,7 +396,8 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
             }
             "input.transcript" -> {
                 // Update the originating voice row, never add a reply or run a task.
-                if (frame.optString("connection_id") != app.phoneSession.flow.value.connectionId) return
+                if (deviceTransportReady &&
+                    frame.optString("connection_id") != app.phoneSession.flow.value.connectionId) return
                 val id = frame.optString("id")
                 val status = frame.optString("status")
                 if (status == "ignored") {
@@ -380,7 +435,7 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
                     frame.optString("reply_to"), extras?.toString().orEmpty(),
                     audioStatus = if (extras?.optBoolean("phone_voice_stream") == true) "waiting" else "",
                     receivedMs = frame.getDouble("_received_ms"),
-                    speechEmotion = frame.optString("speech_emotion").ifBlank { extras?.optString("speech_emotion").orEmpty().ifBlank { "neutral" } },
+                    speechEmotion = frame.optString("speech_emotion").ifBlank { extras?.optString("speech_emotion").orEmpty() },
                     personaId = outputPersonaId)
                 mutableMessages.update { (it + message).takeLast(200) }
                 presentation.output(message)
@@ -424,6 +479,14 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
         }
     }
 
+    private fun reportDeviceFailure(code: String) {
+        deviceTransportReady = false
+        pauseTransport("mcp_stopped")
+        mutableRegistrationReason.value = code
+        devicePhase("mcp_unavailable")
+        Log.w("PhoneConnection", "stage=device_unavailable reason=$code chat_available=$chatAvailable")
+    }
+
     private fun send(frame: JSONObject): Boolean = socket?.send(frame.toString()) == true
     fun answerAuthorization(id: String, reply: String): Boolean {
         val request = mutableAuthorizations.value.firstOrNull { it.id == id } ?: return false
@@ -447,7 +510,7 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
         mutableRegistrationReason.value = ""
         if (socket != null && app.phoneSession.flow.value.connectionId != null &&
             PhoneTunnelStatus.from(app.tunnels.state()).connected) {
-            mutableState.value = "registering"
+            devicePhase("registering")
             if (send(boundFrame("device.retry"))) return
         }
         // Rebind with a fresh proxy, waiting for the predecessor's cleanup in connect().
@@ -467,9 +530,10 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
     fun sendText(text: String, useMainScreen: Boolean = false): Boolean {
         if(text.isBlank() || text.length > 8000) return false
         val id = UUID.randomUUID().toString()
-        app.mainScreen.prepareInput(id, useMainScreen)
+        val deviceControl = deviceTransportReady
+        if (deviceControl) app.mainScreen.prepareInput(id, useMainScreen)
         if(!send(JSONObject().put("type", "input.text").put("id", id).put("text", text)
-            .put("phone_reply_preference", replyPreference()).put("phone_use_main_screen", useMainScreen)
+            .put("phone_reply_preference", replyPreference()).put("phone_use_main_screen", deviceControl && useMainScreen)
             .put("released_ms", PhoneAudio.nowMs()))) {
             app.mainScreen.policy.discardInput(id)
             return false
@@ -485,7 +549,7 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
     }
     fun sendRecording(file: File, releasedMs: Double, useMainScreen: Boolean = false) {
         val id = UUID.randomUUID().toString()
-        app.mainScreen.prepareInput(id, useMainScreen)
+        if (deviceTransportReady) app.mainScreen.prepareInput(id, useMainScreen)
         pendingAudio[id] = PendingRecording(file, releasedMs)
         mutableMessages.update { (it + PhoneMessage(id, "", false, delivery = "pending", voiceInput = true,
             transcriptStatus = "uploading")).takeLast(200) }
@@ -502,7 +566,8 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
                 send(JSONObject().put("type", "input.audio").put("id", id).put("mime", "audio/mp4")
                     .put("audio_base64", Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)).put("released_ms", pending.releasedMs)
                     .put("phone_reply_preference", replyPreference())
-                    .put("phone_use_main_screen", app.mainScreen.policy.state.value.pendingInputGrant == id))
+                    .put("phone_use_main_screen", deviceTransportReady &&
+                        app.mainScreen.policy.state.value.pendingInputGrant == id))
             }.getOrDefault(false)
             mutableMessages.update { list -> list.map { if (it.id == id && it.delivery != "accepted")
                 it.copy(delivery = if (sent) "sent" else "failed",
@@ -541,6 +606,7 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
         send(boundFrame("device.state").put("execution_enabled", false).put("reason", "user_cancelled"))
     }
     fun resume() {
+        if (!deviceTransportReady) return
         app.phoneSession.resume()
         send(boundFrame("device.state").put("execution_enabled", true).put("reason", "user_resume"))
     }
@@ -550,6 +616,8 @@ class HostSocketClient(private val app: VirtualScreenApplication) {
             app.mcp.state().lastError?.let { safeConnectionError(it, "LOCAL_MCP_START_FAILED") }
             else registrationReason.value.takeIf { mutableState.value == "connection_failed" && it.isNotBlank() }
         connectionEpoch++
+        deviceTransportReady = false
+        mutableHostCapabilities.value = HostCapabilities()
         mutableAuthorizations.value = emptyList()
         presentation.clearAuthorization()
         mutableState.value = "disconnected"

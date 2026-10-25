@@ -61,6 +61,6 @@ apksigner verify --verbose --print-certs shealive-0.1.0.apk
 
 标签构建需由维护者在目标仓库设置 `AVS_KEYSTORE_BASE64`、`AVS_STORE_PASSWORD`、`AVS_KEY_PASSWORD`、`AVS_KEY_ALIAS`。使用已有发行密钥，不创建或沿用上游 lineage；流水线启用 v2/v3 签名，并核对上述证书指纹。文件名统一为 `shealive-<版本>.apk`。源码仓不包含签名材料；此说明不表示远端 Secrets 已配置或流水线已执行。
 
-维护者审阅草稿中的 APK、源码标签、签名指纹、许可材料和版本说明后，再执行公开发布。当前 CI 不自动准备 spake2 对应源码附件；发布草稿前须按 [RELINKING](RELINKING.md) 补齐包含 C 子模块的固定源码归档及其 SHA256。当前工作流的完整云端运行及最终提交的干净检出构建尚待首次发行核对，不能用开发机缓存构建替代。
+维护者审阅草稿中的 APK、源码标签、签名指纹、许可材料和版本说明后，再执行公开发布。当前 CI 不自动准备 spake2 对应源码附件；发布草稿前须按 [RELINKING](RELINKING.md) 补齐包含 C 子模块的固定源码归档及其 SHA256。每次发行需从对应提交的干净检出构建，准备并核对清单列明的原生输入；普通工作区构建不代替这一步。当前工作流的完整云端运行尚未验证。
 
 首版发行内容为签名 APK、`SHA256SUMS`、`SIGNING-CERTIFICATE.txt`、对应应用源码版本、spake2 完整对应源码归档及 [0.1.0 说明](RELEASE_NOTES_0.1.0.md)。版本说明保留已知限制。许可资产或应用输入改变后，须重建产物并更新哈希。

@@ -26,7 +26,7 @@ class LeaseExpiryTest {
     @Test fun idleRemoteLeaseExpiresWithoutClientPollingWhilePreviewKeepsRefreshing() = runTest {
         val backend = FakeBackend(BackendKind.ROOT)
         val manager = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), backend, FakeBackend(BackendKind.SHIZUKU),
-            ControlLeaseManager { testScheduler.currentTime })
+            ControlLeaseManager { testScheduler.currentTime }, initialBackend = BackendKind.ROOT)
         backgroundScope.launch { manager.monitorLeaseExpiry() }
         val lease = (manager.acquireLease("remote") as LeaseDecision.Granted).lease
         assertTrue(manager.create(lease.owner, lease.token).ok)
@@ -72,7 +72,8 @@ class LeaseExpiryTest {
 
     @Test fun previewCannotStartAfterLeaseReleaseButCanStartAfterReacquiringControl() = runTest {
         val backend = FakeBackend(BackendKind.ROOT)
-        val manager = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), backend, FakeBackend(BackendKind.SHIZUKU))
+        val manager = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), backend, FakeBackend(BackendKind.SHIZUKU),
+            initialBackend = BackendKind.ROOT)
         val first = (manager.acquireLease("remote") as LeaseDecision.Granted).lease
         assertTrue(manager.create(first.owner, first.token).ok)
         assertEquals(true, manager.showRemotePreview().values["preview_requested"])
@@ -86,7 +87,8 @@ class LeaseExpiryTest {
 
     @Test fun notificationCloseInvalidatesTheLeaseAndOnlyClosesItsOriginalSession() = runTest {
         val backend = FakeBackend(BackendKind.ROOT)
-        val manager = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), backend, FakeBackend(BackendKind.SHIZUKU))
+        val manager = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), backend, FakeBackend(BackendKind.SHIZUKU),
+            initialBackend = BackendKind.ROOT)
         val first = (manager.acquireLease("remote") as LeaseDecision.Granted).lease
         assertTrue(manager.create(first.owner, first.token).ok)
         val session = manager.state.value.sessionId!!

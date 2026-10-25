@@ -57,7 +57,7 @@ class McpToolsTest {
             inspectionFailure = "NO_RUNNING_APP"
             observationFailure = "NO_RUNNING_APP"
         }
-        val sessions = VirtualScreenSessionManager(context, root, FakeBackend(BackendKind.SHIZUKU))
+        val sessions = VirtualScreenSessionManager(context, root, FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val lease = (sessions.acquireLease("agent") as LeaseDecision.Granted).lease
         val registry = McpToolRegistry(sessions)
         sessions.create(lease.owner, lease.token)
@@ -97,7 +97,7 @@ class McpToolsTest {
 
     @Test fun pendingFrameIsNotMisreportedAsAnAbsentApp() = runBlocking {
         val root = FakeBackend(BackendKind.ROOT).apply { observationFailure = "DISPLAY_FRAME_PENDING" }
-        val sessions = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), root, FakeBackend(BackendKind.SHIZUKU))
+        val sessions = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), root, FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val lease = (sessions.acquireLease("agent") as LeaseDecision.Granted).lease
         sessions.create(lease.owner, lease.token)
         val result = McpToolRegistry(sessions).call("observe", JSONObject().put("lease_token", lease.token)
@@ -108,7 +108,7 @@ class McpToolsTest {
 
     @Test fun observesNodesAfterTheApplicationWindowSettlesWithoutReplayingInput() = runBlocking {
         val root = FakeBackend(BackendKind.ROOT).apply { nodeFailure = "NODE_WINDOW_NOT_READY" }
-        val sessions = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), root, FakeBackend(BackendKind.SHIZUKU))
+        val sessions = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), root, FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val lease = (sessions.acquireLease("agent") as LeaseDecision.Granted).lease
         sessions.create(lease.owner, lease.token)
         val ready = launch { delay(50); root.nodeFailure = null }
@@ -145,7 +145,7 @@ class McpToolsTest {
 
     @Test fun splitToolsExposeOnlyApplicableParametersAndRejectMixedActions() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT)
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val specs=registry.tools.associateBy { it.name }
         assertEquals(setOf("acquire_control","release_control","request_control","get_status","get_request_receipt",
@@ -202,7 +202,7 @@ class McpToolsTest {
     }
     @Test fun missingPurposeAndInapplicableArgumentsNeverDispatchInput() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT)
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("test") as LeaseDecision.Granted).lease
         sessions.create("test",lease.token)
@@ -218,7 +218,7 @@ class McpToolsTest {
     }
     @Test fun acceptedInputReturnsFreshObservationByDefault() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT)
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("test") as LeaseDecision.Granted).lease
         sessions.create("test",lease.token)
@@ -243,7 +243,7 @@ class McpToolsTest {
         val root=FakeBackend(BackendKind.ROOT).apply {
             testNodes=listOf(NodeInfo("button",text="Open",clickable=true,windowId=7,packageName="fixture"))
         }
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("test") as LeaseDecision.Granted).lease
         sessions.create("test",lease.token)
@@ -280,7 +280,7 @@ class McpToolsTest {
 
     @Test fun waitDelayReturnsCompactTreeWithoutCapturingAnImage() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT).apply { testNodes=listOf(NodeInfo("readable",text="Ready")) }
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("test") as LeaseDecision.Granted).lease
         sessions.create("test",lease.token)
@@ -296,7 +296,7 @@ class McpToolsTest {
     }
     @Test fun launchReturnsFreshObservationByDefaultAndCanOptOut() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT)
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("test") as LeaseDecision.Granted).lease
         sessions.create("test",lease.token)
@@ -317,7 +317,7 @@ class McpToolsTest {
     }
     @Test fun reconfigureReturnsFreshObservationAfterRebuildingDisplay() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT)
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("test") as LeaseDecision.Granted).lease
         sessions.create("test",lease.token)
@@ -333,7 +333,7 @@ class McpToolsTest {
     }
     @Test fun malformedSwipeAndMissingCoordinatesPreserveObservation() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT)
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("test") as LeaseDecision.Granted).lease
         sessions.create("test",lease.token)
@@ -364,7 +364,7 @@ class McpToolsTest {
     }
     @Test fun competingClientCannotReplaceTheActiveOperationPurpose() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT).apply { createGate=CompletableDeferred() }
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("controller") as LeaseDecision.Granted).lease
         val purpose="Create a screen to test the app"
@@ -395,7 +395,7 @@ class McpToolsTest {
 
     @Test fun unsupportedKeysAndShortLongPressAreRejectedBeforeInput() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT)
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("test") as LeaseDecision.Granted).lease
         sessions.create("test",lease.token)
@@ -408,7 +408,7 @@ class McpToolsTest {
     }
     @Test fun treeObservationAvoidsFrameCaptureAndAmbiguousSelectorDoesNotAct() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT).apply { testNodes=listOf(NodeInfo("one",text="OK",clickable=true),NodeInfo("two",text="OK",clickable=true)) }
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("test") as LeaseDecision.Granted).lease
         sessions.create("test",lease.token)
@@ -425,7 +425,7 @@ class McpToolsTest {
     }
     @Test fun acceptedActionIsNotRepeatedWhenAfterObservationFails() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT)
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("test") as LeaseDecision.Granted).lease
         sessions.create("test",lease.token)
@@ -439,7 +439,7 @@ class McpToolsTest {
     }
     @Test fun conditionalWaitInputsAndTruncatedAbsenceCannotReportSuccess() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT).apply { truncated=true }
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("test") as LeaseDecision.Granted).lease
         sessions.create("test",lease.token)
@@ -450,7 +450,7 @@ class McpToolsTest {
     }
     @Test fun receiptQueriesCannotExecuteInputOrReadAnotherClientsResult() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT)
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val registry=McpToolRegistry(sessions)
         val lease=(sessions.acquireLease("test") as LeaseDecision.Granted).lease
         sessions.create("test",lease.token)

@@ -52,7 +52,7 @@ class SessionManagerTest {
             override suspend fun create(config: VirtualScreenConfig) =
                 Result.failure<VirtualScreenHandle>(IllegalStateException("DISPLAY_GONE"))
         }
-        val manager = VirtualScreenSessionManager(context, backend, FakeBackend(BackendKind.SHIZUKU))
+        val manager = VirtualScreenSessionManager(context, backend, FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val lease = (manager.acquireLease("remote") as LeaseDecision.Granted).lease
         assertFalse(manager.create(lease.owner, lease.token).ok)
         assertEquals("DISPLAY_GONE", manager.state.value.errorCode)
@@ -68,7 +68,7 @@ class SessionManagerTest {
             override suspend fun create(config: VirtualScreenConfig) =
                 Result.failure<VirtualScreenHandle>(IllegalStateException("DISPLAY_GONE"))
         }
-        val manager = VirtualScreenSessionManager(context, backend, FakeBackend(BackendKind.SHIZUKU))
+        val manager = VirtualScreenSessionManager(context, backend, FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val lease = (manager.acquireLease("remote") as LeaseDecision.Granted).lease
         assertFalse(manager.create(lease.owner, lease.token).ok)
         assertEquals("DISPLAY_GONE", manager.state.value.errorCode)
@@ -79,7 +79,7 @@ class SessionManagerTest {
         assertNull(manager.state.value.errorCode)
     }
     @Test fun inputConsumesObservationAndTakeoverFencesOldOwner()=runBlocking {
-        val root=FakeBackend(BackendKind.ROOT); val manager=VirtualScreenSessionManager(context,root,FakeBackend(BackendKind.SHIZUKU))
+        val root=FakeBackend(BackendKind.ROOT); val manager=VirtualScreenSessionManager(context,root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val lease=(manager.acquireLease("remote") as LeaseDecision.Granted).lease
         assertTrue(manager.create(lease.owner,lease.token).ok)
         val observation=manager.observe(lease.owner,lease.token).getOrThrow().values["observation_id"] as String
@@ -91,7 +91,7 @@ class SessionManagerTest {
     }
     @Test fun takeoverDuringCreateReleasesOrphanDisplay()=runBlocking {
         val root=FakeBackend(BackendKind.ROOT).apply { createGate=CompletableDeferred() }
-        val manager=VirtualScreenSessionManager(context,root,FakeBackend(BackendKind.SHIZUKU))
+        val manager=VirtualScreenSessionManager(context,root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val lease=(manager.acquireLease("remote") as LeaseDecision.Granted).lease
         val task=async { manager.create(lease.owner,lease.token) }
         root.entered.await(); manager.phoneTakeover(); root.createGate!!.complete(Unit)
@@ -142,7 +142,7 @@ class SessionManagerTest {
         manager.shutdown()
     }
     @Test fun backendSwitchReleasesActiveDisplayBeforeChanging()=runBlocking {
-        val root=FakeBackend(BackendKind.ROOT); val manager=VirtualScreenSessionManager(context,root,FakeBackend(BackendKind.SHIZUKU))
+        val root=FakeBackend(BackendKind.ROOT); val manager=VirtualScreenSessionManager(context,root,FakeBackend(BackendKind.SHIZUKU), initialBackend = BackendKind.ROOT)
         val lease=(manager.acquireLease("remote") as LeaseDecision.Granted).lease
         manager.create(lease.owner,lease.token)
         manager.selectBackend(BackendKind.SHIZUKU)
@@ -151,7 +151,7 @@ class SessionManagerTest {
     @Test fun onlyOwnerCanCancelAndExpiredLeaseCannotReuseObservation()=runBlocking {
         var clock=0L
         val root=FakeBackend(BackendKind.ROOT)
-        val manager=VirtualScreenSessionManager(context,root,FakeBackend(BackendKind.SHIZUKU),ControlLeaseManager(100) { clock })
+        val manager=VirtualScreenSessionManager(context,root,FakeBackend(BackendKind.SHIZUKU),ControlLeaseManager(100) { clock }, initialBackend = BackendKind.ROOT)
         val lease=(manager.acquireLease("remote") as LeaseDecision.Granted).lease
         manager.create(lease.owner,lease.token)
         val observed=manager.observe(lease.owner,lease.token).getOrThrow().values["observation_id"] as String

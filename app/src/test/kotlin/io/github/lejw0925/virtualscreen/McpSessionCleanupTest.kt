@@ -164,7 +164,7 @@ class McpSessionCleanupTest {
         val clock = AtomicLong()
         val root = FakeBackend(BackendKind.ROOT)
         val sessions = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), root,
-            FakeBackend(BackendKind.SHIZUKU), ControlLeaseManager(leaseMillis) { clock.get() })
+            FakeBackend(BackendKind.SHIZUKU), ControlLeaseManager(leaseMillis) { clock.get() }, initialBackend = BackendKind.ROOT)
         val server = McpServerController(RuntimeEnvironment.getApplication(), sessions) { clock.get() }
         private val counter = AtomicInteger()
         private val port = ServerSocket(0).use { it.localPort }

@@ -64,7 +64,7 @@ class McpServerTest {
     @Test fun authenticatedSessionsCompeteRejectDuplicateInputAndDisconnectOnRotation() {
         val context=RuntimeEnvironment.getApplication()
         val root=FakeBackend(BackendKind.ROOT)
-        val sessions=VirtualScreenSessionManager(context,root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(context,root,FakeBackend(BackendKind.SHIZUKU),initialBackend=BackendKind.ROOT)
         val events=java.util.Collections.synchronizedList(mutableListOf<ActivityLogEntry>())
         val server=McpServerController(context,sessions,log=ActivityLogger { events.add(it) })
         val port=ServerSocket(0).use { it.localPort }
@@ -130,7 +130,7 @@ class McpServerTest {
     @Test fun restartApprovalHttpRequestRemainsAlivePastOrdinarySixtySecondLimit() {
         val context=RuntimeEnvironment.getApplication()
         val backend=RestartBackend()
-        val sessions=VirtualScreenSessionManager(context,backend,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(context,backend,FakeBackend(BackendKind.SHIZUKU),initialBackend=BackendKind.ROOT)
         val server=McpServerController(context,sessions)
         val port=ServerSocket(0).use { it.localPort }
         server.start(port=port).getOrThrow()

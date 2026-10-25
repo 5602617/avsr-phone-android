@@ -169,7 +169,8 @@ class ControlApprovalTest {
 
     @Test fun consecutiveTouchesReuseThePhoneLeaseWithoutFencingTheScreenObservation() = runBlocking {
         val backend = FakeBackend(BackendKind.ROOT)
-        val sessions = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), backend, FakeBackend(BackendKind.SHIZUKU))
+        val sessions = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), backend, FakeBackend(BackendKind.SHIZUKU),
+            initialBackend = BackendKind.ROOT)
         val phone = sessions.beginPhoneSession("viewer")
         sessions.create(phone.owner, phone.token)
         val first = sessions.observe(phone.owner, phone.token, captureFrame = false).getOrThrow()

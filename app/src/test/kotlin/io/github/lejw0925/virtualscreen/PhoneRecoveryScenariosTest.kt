@@ -19,7 +19,7 @@ import org.robolectric.annotation.Config
 class PhoneRecoveryScenariosTest {
     @Test fun missingObservationExplainsRecoveryInAllLanguagesWithoutInput() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT)
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU),initialBackend=BackendKind.ROOT)
         val lease=(sessions.acquireLease("agent") as LeaseDecision.Granted).lease
         sessions.create(lease.owner,lease.token)
         for(language in UiLanguage.entries) {
@@ -39,7 +39,7 @@ class PhoneRecoveryScenariosTest {
 
     @Test fun closedDisplayExplainsCreateRecoveryAndKeepsLeaseGuard() = runBlocking {
         val root=FakeBackend(BackendKind.ROOT)
-        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU))
+        val sessions=VirtualScreenSessionManager(RuntimeEnvironment.getApplication(),root,FakeBackend(BackendKind.SHIZUKU),initialBackend=BackendKind.ROOT)
         val lease=(sessions.acquireLease("agent") as LeaseDecision.Granted).lease
         val registry=McpToolRegistry(sessions)
         val args=JSONObject().put("purpose","Go back").put("lease_token",lease.token).put("observation_id","stale").put("key_code",4)

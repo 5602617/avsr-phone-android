@@ -38,7 +38,7 @@ class AppRestartApprovalTest {
     private suspend fun fixture(nowMillis: () -> Long): Fixture {
         val backend = RestartBackend()
         val sessions = VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), backend, FakeBackend(BackendKind.SHIZUKU),
-            restartApprovals = AppRestartApprovalManager(nowMillis))
+            restartApprovals = AppRestartApprovalManager(nowMillis), initialBackend = BackendKind.ROOT)
         val lease = (sessions.acquireLease("remote") as LeaseDecision.Granted).lease
         assertTrue(sessions.create(lease.owner, lease.token).ok)
         return Fixture(backend, sessions, lease)

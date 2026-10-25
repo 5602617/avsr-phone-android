@@ -21,7 +21,8 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34], application = Application::class)
 class McpToolProbeTest {
     private fun sessions(backend: VirtualScreenBackend = FakeBackend(BackendKind.ROOT)) =
-        VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), backend, FakeBackend(BackendKind.SHIZUKU))
+        VirtualScreenSessionManager(RuntimeEnvironment.getApplication(), backend, FakeBackend(BackendKind.SHIZUKU),
+            initialBackend = backend.kind)
 
     @Test
     fun probeWaitsForDisplayBoundsAndEditorFocusAndVerifiesTheExactCounter() = runBlocking {

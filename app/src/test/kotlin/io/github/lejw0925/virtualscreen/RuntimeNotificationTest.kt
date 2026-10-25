@@ -69,7 +69,8 @@ class RuntimeNotificationTest {
             McpServerState(running = true), activity, TunnelState(), changing = false)
 
         assertTrue(content.working)
-        assertEquals("Open the requested screen", content.detail)
+        assertEquals(context.getString(R.string.notification_isolated), content.detail)
+        assertFalse(content.detail.contains(activity.purpose))
         assertEquals(context.getString(R.string.notification_chip_active), content.chip)
         if (RuntimeNotification.supportsLiveUpdates()) {
             val dismissed = RuntimeNotification.build(context, content, dismissedSession = "screen-1")
@@ -106,7 +107,7 @@ class RuntimeNotificationTest {
         assertEquals("screen-2", content.liveSession)
     }
 
-    @Test fun completedRemoteOperationKeepsItsFullPurposeAndComputerIcon() {
+    @Test fun completedRemoteOperationKeepsItsStatusAndComputerIconWithoutInternalPurpose() {
         val purpose = "Read the requested page and compare every result. ".repeat(20)
         val content = RuntimeNotification.describe(context,
             SessionState(status = SessionStatus.RUNNING, sessionId = "screen-1", displayId = 8,
@@ -117,7 +118,9 @@ class RuntimeNotificationTest {
 
         assertFalse(content.working)
         assertEquals(R.drawable.ic_status_remote, notification.smallIcon.resId)
-        assertEquals(purpose, notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT).toString())
+        val detail = notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT).toString()
+        assertEquals(context.getString(R.string.notification_isolated), detail)
+        assertFalse(detail.contains(purpose))
         assertEquals(listOf(context.getString(R.string.notification_takeover), context.getString(R.string.notification_close_display)),
             notification.actions.map { it.title.toString() })
         assertEquals(listOf(R.drawable.ic_notification_takeover, R.drawable.ic_notification_close),

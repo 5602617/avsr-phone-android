@@ -2,8 +2,9 @@
 
 ## shealive 0.1.0 · 首个公开版本
 
-[固定版本源码](https://github.com/5602617/avsr-phone-android/tree/v0.1.0) · [签名 APK](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0.apk) · [发行页与校验文件](https://github.com/5602617/avsr-phone-android/releases/tag/v0.1.0)
+[当前 APK 对应源码](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0-source.tar.gz) · [签名 APK](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0.apk) · [发行页与校验文件](https://github.com/5602617/avsr-phone-android/releases/tag/v0.1.0)
 
+- 2026-10-26 同版本修复：普通常驻通知改为打开新版应用界面，控制权及应用重启审批入口保持不变；当前 APK 对应源码见上述附件，初始版标签与自动生成的源码下载保持原样。
 - shealive Android 手机客户端：配套 AstrBot 插件登录、文字聊天、录音、语音回复与悬浮陪伴。
 - 加入首次设置引导，支持先聊天、稍后准备手机配对和权限。
 - 整合后台屏幕预览、主屏借用确认、用户接管、交还与停止。

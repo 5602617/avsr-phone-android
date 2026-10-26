@@ -13,7 +13,7 @@ This repository maintains the Android client. The host plugin manages accounts; 
 
 ## Downloads and version
 
-For the first public release, **0.1.0**, get the signed APK, SHA256 checksums, signing certificate and release notes from the [v0.1.0 release page](https://github.com/5602617/avsr-phone-android/releases/tag/v0.1.0), or [download the APK directly](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0.apk). See the [v0.1.0 tag](https://github.com/5602617/avsr-phone-android/tree/v0.1.0) for the matching source.
+For the first public release, **0.1.0**, get the signed APK, SHA256 checksums, signing certificate and release notes from the [v0.1.0 release page](https://github.com/5602617/avsr-phone-android/releases/tag/v0.1.0), or [download the APK directly](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0.apk). The source matching the current APK is [shealive-0.1.0-source.tar.gz](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0-source.tar.gz); its full commit ID is recorded in the release page body. The retained `v0.1.0` tag and GitHub's automatically generated source downloads still describe the initial release and do not include the 2026-10-26 fix published under the same version.
 
 [0.1.0 release notes](docs/RELEASE_NOTES_0.1.0.md) · [Changelog](CHANGELOG.md) · [Documentation](docs/README.md)
 

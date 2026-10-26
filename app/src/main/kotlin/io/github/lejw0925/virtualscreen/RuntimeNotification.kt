@@ -16,6 +16,7 @@ import io.github.lejw0925.virtualscreen.core.SessionState
 import io.github.lejw0925.virtualscreen.core.SessionStatus
 import io.github.lejw0925.virtualscreen.core.VirtualScreenSessionManager
 import io.github.lejw0925.virtualscreen.ui.MainActivity
+import io.github.lejw0925.virtualscreen.ui.PhoneProductActivity
 import io.github.lejw0925.virtualscreen.mcp.McpServerState
 import io.github.lejw0925.virtualscreen.mcp.ToolActivity
 import io.github.lejw0925.virtualscreen.tunnel.TunnelState
@@ -131,7 +132,7 @@ internal object RuntimeNotification {
                 .putExtra(EXTRA_SESSION, content.displaySession),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val open = content.approval?.let { approvalContentIntent(context, it) } ?: PendingIntent.getActivity(context, 0,
-            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            Intent(context, PhoneProductActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val builder = Notification.Builder(context, CHANNEL)
             .setSmallIcon(content.icon)

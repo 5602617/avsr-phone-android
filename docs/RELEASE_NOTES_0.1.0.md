@@ -1,6 +1,11 @@
 # shealive 0.1.0
 
-首个公开版本 **0.1.0**：[发行页与版本说明](https://github.com/5602617/avsr-phone-android/releases/tag/v0.1.0) · [签名 APK](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0.apk) · [SHA256SUMS](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/SHA256SUMS) · [SIGNING-CERTIFICATE.txt](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/SIGNING-CERTIFICATE.txt) · [v0.1.0 应用源码](https://github.com/5602617/avsr-phone-android/tree/v0.1.0) · [spake2-2.2.1 对应源码附件](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/spake2-2.2.1-corresponding-source.tar.gz)。
+首个公开版本 **0.1.0**：[发行页与版本说明](https://github.com/5602617/avsr-phone-android/releases/tag/v0.1.0) · [签名 APK](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0.apk) · [SHA256SUMS](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/SHA256SUMS) · [SIGNING-CERTIFICATE.txt](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/SIGNING-CERTIFICATE.txt) · [当前 APK 对应应用源码附件](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0-source.tar.gz) · [spake2-2.2.1 对应源码附件](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/spake2-2.2.1-corresponding-source.tar.gz)。
+
+## 2026-10-26 同版本修复
+
+- 普通常驻通知现在打开新版应用界面，修正未连接 Agent 时点击通知进入旧 MCP 页面的问题。控制权和应用重启审批通知仍打开原审批页，审批行为保持不变。
+- 版本仍为 `0.1.0`。当前 APK 对应源码为上方 `shealive-0.1.0-source.tar.gz` 附件，完整修复提交标识见发行页正文；`v0.1.0` 标签及 GitHub 自动生成的源码下载保留初始版，不对应本次替换后的 APK。
 
 ## 本版变化
 

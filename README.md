@@ -13,7 +13,7 @@ shealive Android 客户端把聊天、语音和悬浮陪伴带到手机上。连
 
 ## 下载与版本
 
-首个公开版本 **0.1.0**：[从 v0.1.0 发行页获取签名 APK、SHA256 校验和、签名证书及版本说明](https://github.com/5602617/avsr-phone-android/releases/tag/v0.1.0)，也可[直接下载 APK](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0.apk)。固定版本源码见 [v0.1.0 tag](https://github.com/5602617/avsr-phone-android/tree/v0.1.0)。
+首个公开版本 **0.1.0**：[从 v0.1.0 发行页获取签名 APK、SHA256 校验和、签名证书及版本说明](https://github.com/5602617/avsr-phone-android/releases/tag/v0.1.0)，也可[直接下载 APK](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0.apk)。当前 APK 的对应源码见 [shealive-0.1.0-source.tar.gz](https://github.com/5602617/avsr-phone-android/releases/download/v0.1.0/shealive-0.1.0-source.tar.gz)，完整提交标识见发行页正文。保留的 `v0.1.0` 标签及 GitHub 自动生成的源码下载仍对应初始版，不包含 2026-10-26 的同版本修复。
 
 [0.1.0 版本说明](docs/RELEASE_NOTES_0.1.0.md) · [变更记录](CHANGELOG.md) · [文档导航](docs/README.md)
 
